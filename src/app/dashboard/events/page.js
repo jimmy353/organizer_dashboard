@@ -5,11 +5,14 @@ import { useRouter } from "next/navigation";
 
 export default function EventsPage() {
   const router = useRouter();
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+  // 🔥 Fallback for safety
+  const API_URL =
+    process.env.NEXT_PUBLIC_API_URL || "https://api.sirheartevents.com";
 
   const [events, setEvents] = useState([]);
-  const [showCreate, setShowCreate] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
 
   const [form, setForm] = useState({
     title: "",
@@ -49,20 +52,28 @@ export default function EventsPage() {
         return;
       }
 
+      if (!res.ok) {
+        throw new Error("Failed to fetch events");
+      }
+
       const data = await res.json();
       setEvents(data);
     } catch (error) {
-      console.error(error);
+      console.error("Fetch error:", error);
       alert("Error loading events");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   async function handleCreate(e) {
     e.preventDefault();
 
     const token = localStorage.getItem("access");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
 
     const startDateTime = `${form.start_date}T${form.start_time}`;
     const endDateTime = `${form.end_date}T${form.end_time}`;
@@ -96,27 +107,35 @@ export default function EventsPage() {
       setShowCreate(false);
       fetchEvents();
     } catch (error) {
+      console.error(error);
       alert("Failed to create event");
     }
   }
 
   return (
-    <div className="p-10 text-white">
+    <div className="p-10 text-white min-h-screen bg-black">
       <h1 className="text-3xl font-bold mb-6">Your Events</h1>
 
       <button
         onClick={() => setShowCreate(!showCreate)}
-        className="bg-green-500 px-6 py-3 rounded-xl mb-6"
+        className="bg-green-500 hover:bg-green-600 px-6 py-3 rounded-xl mb-6 font-semibold"
       >
         + Add Event
       </button>
 
       {loading && <p>Loading events...</p>}
 
+      {!loading && events.length === 0 && (
+        <p className="text-zinc-400">No events yet.</p>
+      )}
+
       {events.map((event) => (
-        <div key={event.id} className="bg-zinc-900 p-4 rounded-xl mb-4">
+        <div
+          key={event.id}
+          className="bg-zinc-900 p-4 rounded-xl mb-4 border border-zinc-800"
+        >
           <h2 className="text-xl font-bold">{event.title}</h2>
-          <p>{event.location}</p>
+          <p className="text-zinc-400">{event.location}</p>
         </div>
       ))}
     </div>

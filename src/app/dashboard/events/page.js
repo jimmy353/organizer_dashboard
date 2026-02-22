@@ -5,139 +5,111 @@ import { useRouter } from "next/navigation";
 
 export default function EventsPage() {
   const router = useRouter();
-
-  // 🔥 Fallback for safety
-  const API_URL =
-    process.env.NEXT_PUBLIC_API_URL || "https://api.sirheartevents.com";
+  const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
-
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    location: "",
-    start_date: "",
-    start_time: "",
-    end_date: "",
-    end_time: "",
-    category: "music",
-    payout_done: false,
-    image: null,
-  });
 
   useEffect(() => {
-    fetchEvents();
+    const token = localStorage.getItem("access");
+
+    fetch(`${API_URL}/api/events/organizer/`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setEvents(data);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
-  async function fetchEvents() {
+  async function deleteEvent(id) {
     const token = localStorage.getItem("access");
 
-    if (!token) {
-      router.push("/login");
-      return;
-    }
+    await fetch(`${API_URL}/api/events/${id}/`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-    try {
-      const res = await fetch(`${API_URL}/api/events/organizer/`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (res.status === 401) {
-        localStorage.clear();
-        router.push("/login");
-        return;
-      }
-
-      if (!res.ok) {
-        throw new Error("Failed to fetch events");
-      }
-
-      const data = await res.json();
-      setEvents(data);
-    } catch (error) {
-      console.error("Fetch error:", error);
-      alert("Error loading events");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleCreate(e) {
-    e.preventDefault();
-
-    const token = localStorage.getItem("access");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
-    const startDateTime = `${form.start_date}T${form.start_time}`;
-    const endDateTime = `${form.end_date}T${form.end_time}`;
-
-    const formData = new FormData();
-    formData.append("title", form.title);
-    formData.append("description", form.description);
-    formData.append("location", form.location);
-    formData.append("start_date", startDateTime);
-    formData.append("end_date", endDateTime);
-    formData.append("category", form.category);
-    formData.append("payout_done", form.payout_done);
-
-    if (form.image) {
-      formData.append("image", form.image);
-    }
-
-    try {
-      const res = await fetch(`${API_URL}/api/events/create/`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!res.ok) {
-        throw new Error("Create failed");
-      }
-
-      setShowCreate(false);
-      fetchEvents();
-    } catch (error) {
-      console.error(error);
-      alert("Failed to create event");
-    }
+    setEvents(events.filter((e) => e.id !== id));
   }
 
   return (
-    <div className="p-10 text-white min-h-screen bg-black">
-      <h1 className="text-3xl font-bold mb-6">Your Events</h1>
+    <div className="min-h-screen bg-gradient-to-br from-black via-zinc-900 to-black text-white p-10">
+      
+      <div className="flex justify-between items-center mb-10">
+        <h1 className="text-4xl font-bold tracking-wide">
+          Your Events
+        </h1>
 
-      <button
-        onClick={() => setShowCreate(!showCreate)}
-        className="bg-green-500 hover:bg-green-600 px-6 py-3 rounded-xl mb-6 font-semibold"
-      >
-        + Add Event
-      </button>
-
-      {loading && <p>Loading events...</p>}
-
-      {!loading && events.length === 0 && (
-        <p className="text-zinc-400">No events yet.</p>
-      )}
-
-      {events.map((event) => (
-        <div
-          key={event.id}
-          className="bg-zinc-900 p-4 rounded-xl mb-4 border border-zinc-800"
+        <button
+          onClick={() => router.push("/dashboard/events/create")}
+          className="bg-green-500 hover:bg-green-600 transition px-6 py-3 rounded-xl font-semibold shadow-lg"
         >
-          <h2 className="text-xl font-bold">{event.title}</h2>
-          <p className="text-zinc-400">{event.location}</p>
-        </div>
-      ))}
+          + Add Event
+        </button>
+      </div>
+
+      {loading && <p className="text-gray-400">Loading events...</p>}
+
+      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8">
+        {events.map((event) => (
+          <div
+            key={event.id}
+            className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-3xl overflow-hidden shadow-xl hover:scale-105 transition duration-300"
+          >
+            {event.image && (
+              <img
+                src={event.image}
+                alt={event.title}
+                className="w-full h-56 object-cover"
+              />
+            )}
+
+            <div className="p-6">
+              <h2 className="text-xl font-bold mb-2">
+                {event.title}
+              </h2>
+
+              <p className="text-gray-400 mb-6">
+                {event.location}
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() =>
+                    router.push(`/dashboard/events/${event.id}`)
+                  }
+                  className="flex-1 bg-green-500 hover:bg-green-600 py-2 rounded-lg font-semibold"
+                >
+                  View
+                </button>
+
+                <button
+                  onClick={() =>
+                    router.push(`/dashboard/events/${event.id}?edit=true`)
+                  }
+                  className="flex-1 bg-yellow-500 hover:bg-yellow-600 py-2 rounded-lg font-semibold"
+                >
+                  Edit
+                </button>
+
+                <button
+                  onClick={() => deleteEvent(event.id)}
+                  className="flex-1 bg-red-500 hover:bg-red-600 py-2 rounded-lg font-semibold"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

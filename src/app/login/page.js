@@ -1,202 +1,186 @@
-"use client";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  Alert,
+  ActivityIndicator,
+} from "react-native";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { apiFetch, safeJson } from "../services/api";
 
-export default function LoginPage() {
-  const router = useRouter();
-  const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
+export default function OrganizerLoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
-  const [forgotVisible, setForgotVisible] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [forgotLoading, setForgotLoading] = useState(false);
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Email and password are required");
+      return;
+    }
 
-  /* ========================= */
-  /* LOGIN */
-  /* ========================= */
-
-  async function handleLogin(e) {
-    e.preventDefault();
     setLoading(true);
-    setError("");
 
     try {
-      const res = await fetch(`${API_URL}/api/auth/login/`, {
+      const res = await apiFetch("/api/auth/login-role/", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email,
+          password,
+          role: "organizer",
+        }),
       });
 
-      const data = await res.json();
+      const data = await safeJson(res);
 
-      if (!res.ok) {
-        setError(data.detail || "Invalid credentials");
+      if (data?.raw) {
+        Alert.alert("Server Error", "Invalid backend response");
         setLoading(false);
         return;
       }
 
-      localStorage.setItem("access", data.access);
-      localStorage.setItem("refresh", data.refresh);
-
-      router.push("/dashboard/events");
-    } catch {
-      setError("Network error");
-    }
-
-    setLoading(false);
-  }
-
-  /* ========================= */
-  /* FORGOT PASSWORD */
-  /* ========================= */
-
-  async function handleForgotPassword() {
-    if (!forgotEmail) {
-      alert("Please enter your email");
-      return;
-    }
-
-    setForgotLoading(true);
-
-    try {
-      const res = await fetch(`${API_URL}/api/auth/forgot-password/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: forgotEmail }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.detail || "Something went wrong");
-        setForgotLoading(false);
+      // ❌ Not verified
+      if (data.status === "not_verified") {
+        Alert.alert(
+          "Email Not Verified",
+          "Please verify your email OTP first."
+        );
+        navigation.navigate("VerifyOTP", { email });
+        setLoading(false);
         return;
       }
 
-      alert("OTP Sent ✅");
+      // ❌ Under review
+      if (data.status === "pending") {
+        Alert.alert(
+          "Under Review",
+          "Your request is under review.\n\nYou will be able to login once approved."
+        );
+        setLoading(false);
+        return;
+      }
 
-      setForgotVisible(false);
-      router.push(`/verify-otp?email=${forgotEmail}`);
-      setForgotEmail("");
-    } catch {
-      alert("Server error");
+      // ❌ Rejected
+      if (data.status === "rejected") {
+        Alert.alert(
+          "Request Rejected",
+          "Your organizer request was rejected.\nPlease contact support."
+        );
+        setLoading(false);
+        return;
+      }
+
+      if (!res.ok) {
+        Alert.alert(
+          "Login Failed",
+          data.detail || data.error || "Invalid credentials"
+        );
+        setLoading(false);
+        return;
+      }
+
+      // ✅ SUCCESS
+      if (!data.access || !data.refresh) {
+        Alert.alert("Error", "Invalid token response");
+        setLoading(false);
+        return;
+      }
+
+      await AsyncStorage.setItem("access", data.access);
+      await AsyncStorage.setItem("refresh", data.refresh);
+      await AsyncStorage.setItem("role", "organizer");
+
+      Alert.alert("Success", "Welcome to Organizer Dashboard!");
+
+      // 🔥 Web Organizer Dashboard
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "OrganizerDashboard" }],
+      });
+    } catch (err) {
+      Alert.alert("Error", err.message);
     }
 
-    setForgotLoading(false);
-  }
+    setLoading(false);
+  };
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center px-6 text-white">
+    <View style={styles.container}>
+      <Text style={styles.title}>Organizer Login</Text>
 
-      <form
-        onSubmit={handleLogin}
-        className="w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl backdrop-blur-xl"
-      >
-        <h1 className="text-3xl font-bold text-[#7CFF00] mb-6 text-center">
-          Login
-        </h1>
+      <TextInput
+        placeholder="Email"
+        placeholderTextColor="#666"
+        style={styles.input}
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+      />
 
-        {error && (
-          <div className="bg-red-500/20 text-red-400 p-3 rounded mb-4 text-sm text-center">
-            {error}
-          </div>
+      <TextInput
+        placeholder="Password"
+        placeholderTextColor="#666"
+        style={styles.input}
+        secureTextEntry
+        value={password}
+        onChangeText={setPassword}
+      />
+
+      <Pressable style={styles.loginBtn} onPress={handleLogin} disabled={loading}>
+        {loading ? (
+          <ActivityIndicator color="#000" />
+        ) : (
+          <Text style={styles.loginText}>Login</Text>
         )}
-
-        <input
-          type="email"
-          placeholder="Email"
-          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-4 outline-none"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-2 outline-none"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        <div
-          onClick={() => {
-            setForgotEmail(email);
-            setForgotVisible(true);
-          }}
-          className="text-right text-[#7CFF00] font-bold text-sm mb-4 cursor-pointer"
-        >
-          Forgot Password?
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-[#7CFF00] text-black py-3 rounded-full font-bold"
-        >
-          {loading ? "Logging in..." : "Login"}
-        </button>
-
-        {/* SIGNUP LINK FIXED */}
-        <p className="text-center text-gray-400 text-sm mt-6">
-          Don’t have an account?{" "}
-          <Link
-            href="/signup"
-            className="text-[#7CFF00] font-bold hover:underline"
-          >
-            Sign Up
-          </Link>
-        </p>
-      </form>
-
-      {/* ============================= */}
-      {/* FORGOT PASSWORD MODAL */}
-      {/* ============================= */}
-
-      {forgotVisible && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center px-6 z-50">
-          <div className="bg-[#111] border border-[#7CFF00]/40 p-8 rounded-2xl w-full max-w-md">
-
-            <h2 className="text-2xl font-bold text-[#7CFF00] text-center mb-3">
-              Forgot Password
-            </h2>
-
-            <p className="text-gray-400 text-center text-sm mb-5">
-              Enter your email and we will send you OTP to reset password.
-            </p>
-
-            <input
-              type="email"
-              placeholder="Email"
-              className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-5 outline-none"
-              value={forgotEmail}
-              onChange={(e) => setForgotEmail(e.target.value)}
-            />
-
-            <button
-              onClick={handleForgotPassword}
-              disabled={forgotLoading}
-              className="w-full bg-[#7CFF00] text-black py-3 rounded-full font-bold"
-            >
-              {forgotLoading ? "Sending..." : "Send OTP"}
-            </button>
-
-            <div
-              onClick={() => setForgotVisible(false)}
-              className="text-center text-gray-400 font-bold mt-4 cursor-pointer"
-            >
-              Cancel
-            </div>
-
-          </div>
-        </div>
-      )}
-
-    </div>
+      </Pressable>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#000",
+    paddingHorizontal: 24,
+    justifyContent: "center",
+  },
+
+  title: {
+    color: "#7CFF00",
+    fontSize: 34,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 40,
+  },
+
+  input: {
+    height: 55,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    marginBottom: 16,
+    color: "#fff",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    fontSize: 16,
+  },
+
+  loginBtn: {
+    backgroundColor: "#7CFF00",
+    height: 58,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 10,
+  },
+
+  loginText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#000",
+  },
+});

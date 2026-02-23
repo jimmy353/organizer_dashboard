@@ -6,7 +6,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL; // https://api.sirheartevents.c
 
 // ---------- helpers ----------
 function toISO(date, time) {
-  // no "Z" => backend keeps it as-is
   if (!date || !time) return "";
   return `${date}T${time}:00`;
 }
@@ -14,7 +13,6 @@ function toISO(date, time) {
 function fromISO(iso) {
   if (!iso) return { date: "", time: "" };
   const d = new Date(iso);
-  // Use local time display (what the user expects)
   const pad = (n) => String(n).padStart(2, "0");
   return {
     date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
@@ -35,14 +33,14 @@ function formatPretty(iso) {
 }
 
 async function apiFetch(path, options = {}) {
-  const access = typeof window !== "undefined" ? localStorage.getItem("access") : null;
+  const access =
+    typeof window !== "undefined" ? localStorage.getItem("access") : null;
 
   const headers = new Headers(options.headers || {});
   if (!headers.has("Authorization") && access) {
     headers.set("Authorization", `Bearer ${access}`);
   }
 
-  // If we send JSON
   const isFormData = options.body instanceof FormData;
   if (!isFormData && options.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -53,7 +51,6 @@ async function apiFetch(path, options = {}) {
     headers,
   });
 
-  // try parse json, but don’t crash if html
   const text = await res.text();
   let data = null;
   try {
@@ -112,7 +109,6 @@ export default function EventsPage() {
     setLoading(true);
     setError("");
     try {
-      // ✅ organizer endpoint (auth required)
       const { res, data } = await apiFetch("/api/events/organizer/");
       if (!res.ok) {
         setError(data?.detail || "Failed to load events.");
@@ -135,14 +131,14 @@ export default function EventsPage() {
 
   // ---------- open modals ----------
   function openCreate() {
-    resetForm();            // ✅ empty fields ALWAYS
+    resetForm();
     setEditEvent(null);
     setViewEvent(null);
     setModal("create");
   }
 
   function openView(ev) {
-    setViewEvent(ev);       // ✅ separate state
+    setViewEvent(ev);
     setEditEvent(null);
     setModal("view");
   }
@@ -163,7 +159,7 @@ export default function EventsPage() {
     setEndDate(e.date);
     setEndTime(e.time);
 
-    setImageFile(null); // optional new image
+    setImageFile(null);
     setError("");
     setModal("edit");
   }
@@ -308,7 +304,9 @@ export default function EventsPage() {
     }
 
     if (categoryFilter !== "all") {
-      list = list.filter((e) => (e.category || "").toLowerCase() === categoryFilter);
+      list = list.filter(
+        (e) => (e.category || "").toLowerCase() === categoryFilter
+      );
     }
 
     if (sortBy === "newest") {
@@ -331,13 +329,10 @@ export default function EventsPage() {
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">
               Organizer Events
-              <span className="ml-3 rounded-full bg-green-500/15 px-3 py-1 text-sm font-semibold text-green-300">
-                Premium Panel
+              <span className="ml-3 rounded-full bg-blue-500/15 px-3 py-1 text-sm font-semibold text-blue-300">
+                Event Control Centre
               </span>
             </h1>
-            <p className="mt-2 text-sm text-zinc-400">
-              Search, filter, create, view, edit and delete events — all synced with your backend.
-            </p>
           </div>
 
           <button
@@ -414,7 +409,6 @@ export default function EventsPage() {
                   key={ev.id}
                   className="group overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 shadow-xl shadow-black/30"
                 >
-                  {/* image */}
                   <div className="relative h-48 w-full overflow-hidden bg-zinc-900">
                     {ev.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -434,7 +428,6 @@ export default function EventsPage() {
                     </div>
                   </div>
 
-                  {/* content */}
                   <div className="p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -461,25 +454,25 @@ export default function EventsPage() {
                       {ev.description || "No description"}
                     </p>
 
-                    {/* buttons */}
+                    {/* buttons (colored) */}
                     <div className="mt-5 flex flex-wrap gap-2">
                       <button
                         onClick={() => openView(ev)}
-                        className="rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/15"
+                        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
                       >
                         👁 View
                       </button>
 
                       <button
                         onClick={() => openEdit(ev)}
-                        className="rounded-xl bg-yellow-500/15 px-4 py-2 text-sm font-semibold text-yellow-200 hover:bg-yellow-500/20"
+                        className="rounded-xl bg-yellow-500 px-4 py-2 text-sm font-semibold text-black hover:bg-yellow-400"
                       >
                         ✏️ Edit
                       </button>
 
                       <button
                         onClick={() => handleDelete(ev)}
-                        className="rounded-xl bg-red-500/15 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/20"
+                        className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500"
                       >
                         🗑 Delete
                       </button>
@@ -492,15 +485,19 @@ export default function EventsPage() {
         </div>
       </div>
 
-      {/* ---------- VIEW MODAL (separate) ---------- */}
+      {/* VIEW MODAL */}
       {modal === "view" && viewEvent && (
         <ModalShell title="Event Details" onClose={closeModal}>
           <div className="space-y-4">
             <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950">
-              <div className="relative h-56 w-full bg-zinc-900">
+              <div className="relative h-48 w-full bg-zinc-900">
                 {viewEvent.image ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={viewEvent.image} alt="" className="h-full w-full object-cover" />
+                  <img
+                    src={viewEvent.image}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <div className="flex h-full items-center justify-center text-zinc-500">
                     No Image
@@ -508,21 +505,25 @@ export default function EventsPage() {
                 )}
               </div>
 
-              <div className="p-5">
+              <div className="p-4">
                 <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <h3 className="text-2xl font-extrabold">{viewEvent.title}</h3>
+                    <h3 className="text-xl font-extrabold">{viewEvent.title}</h3>
                     <p className="mt-1 text-zinc-400">📍 {viewEvent.location}</p>
                     <div className="mt-2 inline-flex rounded-full bg-green-500/15 px-3 py-1 text-xs font-semibold text-green-200">
                       {String(viewEvent.category || "uncategorized").toUpperCase()}
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-zinc-800 bg-black/40 p-4 text-sm">
+                  <div className="rounded-2xl border border-zinc-800 bg-black/40 p-3 text-sm">
                     <div className="text-zinc-400">Start</div>
-                    <div className="font-semibold">{formatPretty(viewEvent.start_date)}</div>
-                    <div className="mt-3 text-zinc-400">End</div>
-                    <div className="font-semibold">{formatPretty(viewEvent.end_date)}</div>
+                    <div className="font-semibold">
+                      {formatPretty(viewEvent.start_date)}
+                    </div>
+                    <div className="mt-2 text-zinc-400">End</div>
+                    <div className="font-semibold">
+                      {formatPretty(viewEvent.end_date)}
+                    </div>
                   </div>
                 </div>
 
@@ -547,7 +548,7 @@ export default function EventsPage() {
         </ModalShell>
       )}
 
-      {/* ---------- CREATE MODAL ---------- */}
+      {/* CREATE MODAL */}
       {modal === "create" && (
         <ModalShell title="Create Event" onClose={closeModal}>
           <EventForm
@@ -577,7 +578,7 @@ export default function EventsPage() {
         </ModalShell>
       )}
 
-      {/* ---------- EDIT MODAL ---------- */}
+      {/* EDIT MODAL */}
       {modal === "edit" && editEvent && (
         <ModalShell title="Edit Event" onClose={closeModal}>
           <EventForm
@@ -610,13 +611,13 @@ export default function EventsPage() {
   );
 }
 
-// ---------- Modal Shell ----------
+// ---------- Modal Shell (smaller popup) ----------
 function ModalShell({ title, onClose, children }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="w-full max-w-2xl overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
-          <div className="text-lg font-extrabold">{title}</div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3">
+      <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+          <div className="text-base font-extrabold">{title}</div>
           <button
             onClick={onClose}
             className="rounded-xl bg-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/15"
@@ -624,7 +625,7 @@ function ModalShell({ title, onClose, children }) {
             ✕
           </button>
         </div>
-        <div className="px-5 py-5">{children}</div>
+        <div className="px-4 py-4">{children}</div>
       </div>
     </div>
   );
@@ -698,7 +699,7 @@ function EventForm({
 
         <Field label="Description" className="md:col-span-2">
           <textarea
-            className="min-h-[110px] w-full rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3 outline-none placeholder:text-zinc-600 focus:border-green-500/60"
+            className="min-h-[90px] w-full rounded-2xl border border-zinc-800 bg-black/30 px-4 py-3 outline-none placeholder:text-zinc-600 focus:border-green-500/60"
             placeholder="Write full event description..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}

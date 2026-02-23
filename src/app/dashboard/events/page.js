@@ -7,22 +7,20 @@ const API_URL = "https://api.sirheartevents.com";
 export default function EventsPage() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
 
-  const [showCreate, setShowCreate] = useState(false);
-  const [showView, setShowView] = useState(false);
-  const [showEdit, setShowEdit] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState(null);
 
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [editingEvent, setEditingEvent] = useState(null);
-
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [location, setLocation] = useState("");
-  const [category, setCategory] = useState("music");
-
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    location: "",
+    category: "music",
+    start_date: "",
+    start_time: "",
+    end_date: "",
+    end_time: "",
+  });
 
   const [imageFile, setImageFile] = useState(null);
 
@@ -40,11 +38,6 @@ export default function EventsPage() {
         },
       });
 
-      if (res.status === 401) {
-        alert("Unauthorized. Please login again.");
-        return;
-      }
-
       const data = await res.json();
       setEvents(data);
     } catch (err) {
@@ -54,33 +47,76 @@ export default function EventsPage() {
     }
   }
 
-  function resetForm() {
-    setTitle("");
-    setDescription("");
-    setLocation("");
-    setCategory("music");
-    setStartDate("");
-    setEndDate("");
+  function openCreate() {
+    setEditing(null);
+    setForm({
+      title: "",
+      description: "",
+      location: "",
+      category: "music",
+      start_date: "",
+      start_time: "",
+      end_date: "",
+      end_time: "",
+    });
+    setShowModal(true);
+  }
+
+  function openEdit(event) {
+    const start = new Date(event.start_date);
+    const end = new Date(event.end_date);
+
+    setEditing(event);
+
+    setForm({
+      title: event.title,
+      description: event.description,
+      location: event.location,
+      category: event.category,
+      start_date: start.toISOString().slice(0, 10),
+      start_time: start.toISOString().slice(11, 16),
+      end_date: end.toISOString().slice(0, 10),
+      end_time: end.toISOString().slice(11, 16),
+    });
+
+    setShowModal(true);
+  }
+
+  function closeModal() {
+    setShowModal(false);
+    setEditing(null);
     setImageFile(null);
   }
 
-  async function createEvent() {
+  async function saveEvent() {
     const token = localStorage.getItem("access");
 
     const formData = new FormData();
-    formData.append("title", title);
-    formData.append("description", description);
-    formData.append("location", location);
-    formData.append("category", category);
-    formData.append("start_date", startDate);
-    formData.append("end_date", endDate);
+
+    formData.append("title", form.title);
+    formData.append("description", form.description);
+    formData.append("location", form.location);
+    formData.append("category", form.category);
+
+    // Combine date + time
+    const startISO = `${form.start_date}T${form.start_time}:00`;
+    const endISO = `${form.end_date}T${form.end_time}:00`;
+
+    formData.append("start_date", startISO);
+    formData.append("end_date", endISO);
 
     if (imageFile) {
       formData.append("image", imageFile);
     }
 
-    const res = await fetch(`${API_URL}/api/events/create/`, {
-      method: "POST",
+    const url = editing
+      ? `${API_URL}/api/events/${editing.id}/`
+      : `${API_URL}/api/events/create/`;
+
+    const method = editing ? "PUT" : "POST";
+
+    const res = await fetch(url, {
+      method,
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -88,50 +124,11 @@ export default function EventsPage() {
     });
 
     if (!res.ok) {
-      alert("Create failed");
+      alert("Error saving event");
       return;
     }
 
-    alert("Event created!");
-    setShowCreate(false);
-    resetForm();
-    fetchEvents();
-  }
-
-  async function updateEvent() {
-    const token = localStorage.getItem("access");
-
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("description", description);
-    formData.append("location", location);
-    formData.append("category", category);
-    formData.append("start_date", startDate);
-    formData.append("end_date", endDate);
-
-    if (imageFile) {
-      formData.append("image", imageFile);
-    }
-
-    const res = await fetch(
-      `${API_URL}/api/events/${editingEvent.id}/`,
-      {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      }
-    );
-
-    if (!res.ok) {
-      alert("Update failed");
-      return;
-    }
-
-    alert("Updated!");
-    setShowEdit(false);
-    resetForm();
+    closeModal();
     fetchEvents();
   }
 
@@ -140,56 +137,24 @@ export default function EventsPage() {
 
     if (!confirm("Delete this event?")) return;
 
-    const res = await fetch(`${API_URL}/api/events/${id}/`, {
+    await fetch(`${API_URL}/api/events/${id}/`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
 
-    if (!res.ok) {
-      alert("Delete failed");
-      return;
-    }
-
-    alert("Deleted");
     fetchEvents();
   }
 
-  function openView(event) {
-    setSelectedEvent(event);
-    setShowView(true);
-  }
-
-  function openEdit(event) {
-    setEditingEvent(event);
-    setTitle(event.title);
-    setDescription(event.description);
-    setLocation(event.location);
-    setCategory(event.category);
-    setStartDate(event.start_date);
-    setEndDate(event.end_date);
-    setShowEdit(true);
-  }
-
-  const filtered = events.filter((e) =>
-    e.title.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
-    <div className="p-6 text-white bg-black min-h-screen">
-      <h1 className="text-3xl font-bold mb-6">Organizer Events</h1>
+    <div className="min-h-screen bg-[#0f172a] text-white p-10">
 
-      <div className="flex gap-4 mb-6">
-        <input
-          placeholder="Search..."
-          className="p-2 rounded text-black"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Organizer Events</h1>
         <button
-          onClick={() => setShowCreate(true)}
-          className="bg-green-500 px-4 py-2 rounded"
+          onClick={openCreate}
+          className="bg-green-500 hover:bg-green-600 px-5 py-2 rounded-lg"
         >
           + Create Event
         </button>
@@ -198,145 +163,147 @@ export default function EventsPage() {
       {loading ? (
         <p>Loading...</p>
       ) : (
-        filtered.map((event) => (
-          <div
-            key={event.id}
-            className="border border-gray-700 p-4 mb-4 rounded"
-          >
-            {event.image && (
-              <img
-                src={event.image}
-                className="w-full h-48 object-cover mb-3 rounded"
-              />
-            )}
+        <div className="grid md:grid-cols-3 gap-6">
+          {events.map((event) => (
+            <div
+              key={event.id}
+              className="bg-[#1e293b] rounded-xl overflow-hidden shadow-lg"
+            >
+              {event.image && (
+                <img
+                  src={event.image}
+                  className="w-full h-48 object-cover"
+                />
+              )}
 
-            <h2 className="text-xl font-bold">{event.title}</h2>
-            <p>{event.location}</p>
-            <p>{event.category}</p>
+              <div className="p-5">
+                <h2 className="text-lg font-bold mb-2">
+                  {event.title}
+                </h2>
+                <p className="text-gray-400 text-sm">
+                  {event.location}
+                </p>
 
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => openView(event)}
-                className="bg-blue-500 px-3 py-1 rounded"
-              >
-                View
-              </button>
-
-              <button
-                onClick={() => openEdit(event)}
-                className="bg-yellow-500 px-3 py-1 rounded"
-              >
-                Edit
-              </button>
-
-              <button
-                onClick={() => deleteEvent(event.id)}
-                className="bg-red-500 px-3 py-1 rounded"
-              >
-                Delete
-              </button>
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={() => openEdit(event)}
+                    className="bg-yellow-500 px-3 py-1 rounded"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => deleteEvent(event.id)}
+                    className="bg-red-500 px-3 py-1 rounded"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        ))
-      )}
-
-      {/* CREATE / EDIT MODAL */}
-      {(showCreate || showEdit) && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center">
-          <div className="bg-gray-900 p-6 rounded w-96">
-            <h2 className="text-xl mb-4">
-              {showCreate ? "Create Event" : "Edit Event"}
-            </h2>
-
-            <input
-              className="w-full mb-2 p-2 text-black rounded"
-              placeholder="Title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-
-            <input
-              className="w-full mb-2 p-2 text-black rounded"
-              placeholder="Description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-
-            <input
-              className="w-full mb-2 p-2 text-black rounded"
-              placeholder="Location"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-            />
-
-            <input
-              type="datetime-local"
-              className="w-full mb-2 p-2 text-black rounded"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
-
-            <input
-              type="datetime-local"
-              className="w-full mb-2 p-2 text-black rounded"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-            />
-
-            <input
-              type="file"
-              className="mb-2"
-              onChange={(e) => setImageFile(e.target.files[0])}
-            />
-
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={showCreate ? createEvent : updateEvent}
-                className="bg-green-500 px-3 py-1 rounded"
-              >
-                Save
-              </button>
-
-              <button
-                onClick={() => {
-                  setShowCreate(false);
-                  setShowEdit(false);
-                  resetForm();
-                }}
-                className="bg-gray-500 px-3 py-1 rounded"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
       )}
 
-      {/* VIEW MODAL */}
-      {showView && selectedEvent && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center">
-          <div className="bg-gray-900 p-6 rounded w-96">
-            <h2 className="text-xl mb-4">{selectedEvent.title}</h2>
+      {/* MODAL */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/70 flex justify-center items-center">
+          <div className="bg-[#1e293b] p-8 rounded-xl w-full max-w-lg">
 
-            {selectedEvent.image && (
-              <img
-                src={selectedEvent.image}
-                className="w-full h-48 object-cover mb-3 rounded"
+            <h2 className="text-xl font-bold mb-6">
+              {editing ? "Edit Event" : "Create Event"}
+            </h2>
+
+            <input
+              placeholder="Title"
+              className="w-full mb-3 p-3 rounded bg-[#0f172a]"
+              value={form.title}
+              onChange={(e) =>
+                setForm({ ...form, title: e.target.value })
+              }
+            />
+
+            <input
+              placeholder="Description"
+              className="w-full mb-3 p-3 rounded bg-[#0f172a]"
+              value={form.description}
+              onChange={(e) =>
+                setForm({ ...form, description: e.target.value })
+              }
+            />
+
+            <input
+              placeholder="Location"
+              className="w-full mb-3 p-3 rounded bg-[#0f172a]"
+              value={form.location}
+              onChange={(e) =>
+                setForm({ ...form, location: e.target.value })
+              }
+            />
+
+            {/* START DATE + TIME */}
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <input
+                type="date"
+                className="p-3 rounded bg-[#0f172a]"
+                value={form.start_date}
+                onChange={(e) =>
+                  setForm({ ...form, start_date: e.target.value })
+                }
               />
-            )}
+              <input
+                type="time"
+                className="p-3 rounded bg-[#0f172a]"
+                value={form.start_time}
+                onChange={(e) =>
+                  setForm({ ...form, start_time: e.target.value })
+                }
+              />
+            </div>
 
-            <p>Location: {selectedEvent.location}</p>
-            <p>Category: {selectedEvent.category}</p>
-            <p>Start: {selectedEvent.start_date}</p>
-            <p>End: {selectedEvent.end_date}</p>
-            <p className="mt-3">{selectedEvent.description}</p>
+            {/* END DATE + TIME */}
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <input
+                type="date"
+                className="p-3 rounded bg-[#0f172a]"
+                value={form.end_date}
+                onChange={(e) =>
+                  setForm({ ...form, end_date: e.target.value })
+                }
+              />
+              <input
+                type="time"
+                className="p-3 rounded bg-[#0f172a]"
+                value={form.end_time}
+                onChange={(e) =>
+                  setForm({ ...form, end_time: e.target.value })
+                }
+              />
+            </div>
 
-            <button
-              onClick={() => setShowView(false)}
-              className="bg-gray-500 px-3 py-1 rounded mt-4"
-            >
-              Close
-            </button>
+            <input
+              type="file"
+              className="mb-4"
+              onChange={(e) =>
+                setImageFile(e.target.files[0])
+              }
+            />
+
+            <div className="flex justify-end gap-4">
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 bg-gray-600 rounded"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={saveEvent}
+                className="px-4 py-2 bg-green-500 rounded"
+              >
+                Save
+              </button>
+            </div>
+
           </div>
         </div>
       )}

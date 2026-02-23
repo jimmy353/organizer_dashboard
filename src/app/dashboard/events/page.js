@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Plus, Eye, Pencil, Trash2 } from "lucide-react";
 
 const API_URL = "https://api.sirheartevents.com";
 
@@ -8,8 +9,12 @@ export default function EventsPage() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+
   const [showModal, setShowModal] = useState(false);
-  const [editing, setEditing] = useState(null);
+  const [mode, setMode] = useState("create");
+  const [selected, setSelected] = useState(null);
 
   const [form, setForm] = useState({
     title: "",
@@ -33,9 +38,7 @@ export default function EventsPage() {
       const token = localStorage.getItem("access");
 
       const res = await fetch(`${API_URL}/api/events/organizer/`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       const data = await res.json();
@@ -47,44 +50,32 @@ export default function EventsPage() {
     }
   }
 
-  function openCreate() {
-    setEditing(null);
-    setForm({
-      title: "",
-      description: "",
-      location: "",
-      category: "music",
-      start_date: "",
-      start_time: "",
-      end_date: "",
-      end_time: "",
-    });
-    setShowModal(true);
-  }
+  function openModal(type, event = null) {
+    setMode(type);
+    setSelected(event);
 
-  function openEdit(event) {
-    const start = new Date(event.start_date);
-    const end = new Date(event.end_date);
+    if (event) {
+      const start = new Date(event.start_date);
+      const end = new Date(event.end_date);
 
-    setEditing(event);
-
-    setForm({
-      title: event.title,
-      description: event.description,
-      location: event.location,
-      category: event.category,
-      start_date: start.toISOString().slice(0, 10),
-      start_time: start.toISOString().slice(11, 16),
-      end_date: end.toISOString().slice(0, 10),
-      end_time: end.toISOString().slice(11, 16),
-    });
+      setForm({
+        title: event.title,
+        description: event.description,
+        location: event.location,
+        category: event.category,
+        start_date: start.toISOString().slice(0, 10),
+        start_time: start.toISOString().slice(11, 16),
+        end_date: end.toISOString().slice(0, 10),
+        end_time: end.toISOString().slice(11, 16),
+      });
+    }
 
     setShowModal(true);
   }
 
   function closeModal() {
     setShowModal(false);
-    setEditing(null);
+    setSelected(null);
     setImageFile(null);
   }
 
@@ -99,34 +90,29 @@ export default function EventsPage() {
     formData.append("category", form.category);
 
     // Combine date + time
-    const startISO = `${form.start_date}T${form.start_time}:00`;
-    const endISO = `${form.end_date}T${form.end_time}:00`;
+    formData.append(
+      "start_date",
+      `${form.start_date}T${form.start_time}:00`
+    );
+    formData.append(
+      "end_date",
+      `${form.end_date}T${form.end_time}:00`
+    );
 
-    formData.append("start_date", startISO);
-    formData.append("end_date", endISO);
+    if (imageFile) formData.append("image", imageFile);
 
-    if (imageFile) {
-      formData.append("image", imageFile);
-    }
+    const url =
+      mode === "edit"
+        ? `${API_URL}/api/events/${selected.id}/`
+        : `${API_URL}/api/events/create/`;
 
-    const url = editing
-      ? `${API_URL}/api/events/${editing.id}/`
-      : `${API_URL}/api/events/create/`;
+    const method = mode === "edit" ? "PUT" : "POST";
 
-    const method = editing ? "PUT" : "POST";
-
-    const res = await fetch(url, {
+    await fetch(url, {
       method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
       body: formData,
     });
-
-    if (!res.ok) {
-      alert("Error saving event");
-      return;
-    }
 
     closeModal();
     fetchEvents();
@@ -139,32 +125,67 @@ export default function EventsPage() {
 
     await fetch(`${API_URL}/api/events/${id}/`, {
       method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${token}` },
     });
 
     fetchEvents();
   }
 
+  const filtered = events.filter((e) => {
+    const matchSearch =
+      e.title?.toLowerCase().includes(search.toLowerCase()) ||
+      e.location?.toLowerCase().includes(search.toLowerCase()) ||
+      e.category?.toLowerCase().includes(search.toLowerCase());
+
+    const matchCategory =
+      categoryFilter === "all" ||
+      e.category === categoryFilter;
+
+    return matchSearch && matchCategory;
+  });
+
   return (
     <div className="min-h-screen bg-[#0f172a] text-white p-10">
 
+      {/* HEADER */}
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Organizer Events</h1>
+        <h1 className="text-3xl font-bold">Events</h1>
+
         <button
-          onClick={openCreate}
-          className="bg-green-500 hover:bg-green-600 px-5 py-2 rounded-lg"
+          onClick={() => openModal("create")}
+          className="flex items-center gap-2 bg-green-500 px-4 py-2 rounded-lg"
         >
-          + Create Event
+          <Plus size={18} /> Create Event
         </button>
       </div>
 
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        <div className="grid md:grid-cols-3 gap-6">
-          {events.map((event) => (
+      {/* SEARCH + FILTER */}
+      <div className="flex gap-4 mb-8">
+        <input
+          placeholder="Search events..."
+          className="p-3 rounded bg-[#1e293b] w-full"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+
+        <select
+          className="p-3 rounded bg-[#1e293b]"
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+        >
+          <option value="all">All</option>
+          <option value="music">Music</option>
+          <option value="comedy">Comedy</option>
+          <option value="nightlife">Nightlife</option>
+        </select>
+      </div>
+
+      {/* EVENTS GRID */}
+      <div className="grid md:grid-cols-3 gap-6">
+        {filtered.map((event) => {
+          const start = new Date(event.start_date);
+
+          return (
             <div
               key={event.id}
               className="bg-[#1e293b] rounded-xl overflow-hidden shadow-lg"
@@ -177,32 +198,62 @@ export default function EventsPage() {
               )}
 
               <div className="p-5">
-                <h2 className="text-lg font-bold mb-2">
+
+                {/* CATEGORY BADGE */}
+                <span className="text-xs bg-green-600 px-3 py-1 rounded-full">
+                  {event.category}
+                </span>
+
+                <h2 className="font-bold text-lg mt-3">
                   {event.title}
                 </h2>
-                <p className="text-gray-400 text-sm">
+
+                <p className="text-gray-400 text-sm mt-1">
                   {event.location}
                 </p>
 
-                <div className="flex gap-3 mt-4">
+                {/* DATE + TIME */}
+                <p className="text-sm text-gray-300 mt-2">
+                  📅 {start.toLocaleDateString()}
+                </p>
+
+                <p className="text-sm text-gray-300">
+                  ⏰ {start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </p>
+
+                {/* DESCRIPTION PREVIEW */}
+                <p className="text-gray-400 text-sm mt-3 line-clamp-2">
+                  {event.description}
+                </p>
+
+                <div className="flex gap-4 mt-4">
                   <button
-                    onClick={() => openEdit(event)}
-                    className="bg-yellow-500 px-3 py-1 rounded"
+                    onClick={() => openModal("view", event)}
+                    className="text-blue-400"
                   >
-                    Edit
+                    <Eye size={18} />
                   </button>
+
+                  <button
+                    onClick={() => openModal("edit", event)}
+                    className="text-yellow-400"
+                  >
+                    <Pencil size={18} />
+                  </button>
+
                   <button
                     onClick={() => deleteEvent(event.id)}
-                    className="bg-red-500 px-3 py-1 rounded"
+                    className="text-red-400"
                   >
-                    Delete
+                    <Trash2 size={18} />
                   </button>
                 </div>
+
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
 
       {/* MODAL */}
       {showModal && (
@@ -210,7 +261,7 @@ export default function EventsPage() {
           <div className="bg-[#1e293b] p-8 rounded-xl w-full max-w-lg">
 
             <h2 className="text-xl font-bold mb-6">
-              {editing ? "Edit Event" : "Create Event"}
+              {mode === "edit" ? "Edit Event" : "Create Event"}
             </h2>
 
             <input
@@ -222,7 +273,7 @@ export default function EventsPage() {
               }
             />
 
-            <input
+            <textarea
               placeholder="Description"
               className="w-full mb-3 p-3 rounded bg-[#0f172a]"
               value={form.description}
@@ -240,8 +291,21 @@ export default function EventsPage() {
               }
             />
 
-            {/* START DATE + TIME */}
-            <div className="grid grid-cols-2 gap-3 mb-3">
+            {/* CATEGORY DROPDOWN */}
+            <select
+              className="w-full mb-3 p-3 rounded bg-[#0f172a]"
+              value={form.category}
+              onChange={(e) =>
+                setForm({ ...form, category: e.target.value })
+              }
+            >
+              <option value="music">Music</option>
+              <option value="comedy">Comedy</option>
+              <option value="nightlife">Nightlife</option>
+            </select>
+
+            {/* DATE & TIME SEPARATED */}
+            <div className="grid grid-cols-2 gap-3">
               <input
                 type="date"
                 className="p-3 rounded bg-[#0f172a]"
@@ -260,8 +324,7 @@ export default function EventsPage() {
               />
             </div>
 
-            {/* END DATE + TIME */}
-            <div className="grid grid-cols-2 gap-3 mb-3">
+            <div className="grid grid-cols-2 gap-3 mt-3">
               <input
                 type="date"
                 className="p-3 rounded bg-[#0f172a]"
@@ -282,13 +345,13 @@ export default function EventsPage() {
 
             <input
               type="file"
-              className="mb-4"
+              className="mt-4"
               onChange={(e) =>
                 setImageFile(e.target.files[0])
               }
             />
 
-            <div className="flex justify-end gap-4">
+            <div className="flex justify-end gap-4 mt-6">
               <button
                 onClick={closeModal}
                 className="px-4 py-2 bg-gray-600 rounded"
@@ -307,6 +370,7 @@ export default function EventsPage() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

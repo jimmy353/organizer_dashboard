@@ -2,233 +2,342 @@
 
 import { useEffect, useState } from "react";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = "https://api.sirheartevents.com";
 
-export default function OrganizerEventsPage() {
+export default function EventsPage() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    location: "",
-    category: "music",
-    start_date: "",
-    end_date: "",
-    image: null,
-  });
+  const [showCreate, setShowCreate] = useState(false);
+  const [showView, setShowView] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
-  const [editingId, setEditingId] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [editingEvent, setEditingEvent] = useState(null);
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
+  const [category, setCategory] = useState("music");
+
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const [imageFile, setImageFile] = useState(null);
 
   useEffect(() => {
     fetchEvents();
   }, []);
 
   async function fetchEvents() {
-    const token = localStorage.getItem("access");
+    try {
+      const token = localStorage.getItem("access");
 
-    if (!token) {
-      window.location.href = "/";
-      return;
-    }
+      const res = await fetch(`${API_URL}/api/events/organizer/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    const res = await fetch(`${API_URL}/api/events/organizer/`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+      if (res.status === 401) {
+        alert("Unauthorized. Please login again.");
+        return;
+      }
 
-    if (res.status === 401) {
-      localStorage.removeItem("access");
-      window.location.href = "/";
-      return;
-    }
-
-    const data = await res.json();
-    setEvents(data);
-    setLoading(false);
-  }
-
-  function handleChange(e) {
-    const { name, value, files } = e.target;
-
-    if (files) {
-      setForm({ ...form, [name]: files[0] });
-    } else {
-      setForm({ ...form, [name]: value });
+      const data = await res.json();
+      setEvents(data);
+    } catch (err) {
+      alert("Failed to load events");
+    } finally {
+      setLoading(false);
     }
   }
 
-  async function saveEvent() {
+  function resetForm() {
+    setTitle("");
+    setDescription("");
+    setLocation("");
+    setCategory("music");
+    setStartDate("");
+    setEndDate("");
+    setImageFile(null);
+  }
+
+  async function createEvent() {
     const token = localStorage.getItem("access");
 
     const formData = new FormData();
-    Object.keys(form).forEach((key) => {
-      if (form[key]) formData.append(key, form[key]);
+    formData.append("title", title);
+    formData.append("description", description);
+    formData.append("location", location);
+    formData.append("category", category);
+    formData.append("start_date", startDate);
+    formData.append("end_date", endDate);
+
+    if (imageFile) {
+      formData.append("image", imageFile);
+    }
+
+    const res = await fetch(`${API_URL}/api/events/create/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
     });
 
-    if (editingId) {
-      await fetch(`${API_URL}/api/events/${editingId}/`, {
+    if (!res.ok) {
+      alert("Create failed");
+      return;
+    }
+
+    alert("Event created!");
+    setShowCreate(false);
+    resetForm();
+    fetchEvents();
+  }
+
+  async function updateEvent() {
+    const token = localStorage.getItem("access");
+
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("description", description);
+    formData.append("location", location);
+    formData.append("category", category);
+    formData.append("start_date", startDate);
+    formData.append("end_date", endDate);
+
+    if (imageFile) {
+      formData.append("image", imageFile);
+    }
+
+    const res = await fetch(
+      `${API_URL}/api/events/${editingEvent.id}/`,
+      {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
         },
         body: formData,
-      });
-    } else {
-      await fetch(`${API_URL}/api/events/create/`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
+      }
+    );
+
+    if (!res.ok) {
+      alert("Update failed");
+      return;
     }
 
-    setEditingId(null);
-    setForm({
-      title: "",
-      description: "",
-      location: "",
-      category: "music",
-      start_date: "",
-      end_date: "",
-      image: null,
-    });
-
+    alert("Updated!");
+    setShowEdit(false);
+    resetForm();
     fetchEvents();
   }
 
   async function deleteEvent(id) {
     const token = localStorage.getItem("access");
 
-    await fetch(`${API_URL}/api/events/${id}/`, {
+    if (!confirm("Delete this event?")) return;
+
+    const res = await fetch(`${API_URL}/api/events/${id}/`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
 
+    if (!res.ok) {
+      alert("Delete failed");
+      return;
+    }
+
+    alert("Deleted");
     fetchEvents();
   }
 
-  function editEvent(event) {
-    setEditingId(event.id);
-    setForm({
-      ...event,
-      image: null,
-    });
+  function openView(event) {
+    setSelectedEvent(event);
+    setShowView(true);
   }
 
+  function openEdit(event) {
+    setEditingEvent(event);
+    setTitle(event.title);
+    setDescription(event.description);
+    setLocation(event.location);
+    setCategory(event.category);
+    setStartDate(event.start_date);
+    setEndDate(event.end_date);
+    setShowEdit(true);
+  }
+
+  const filtered = events.filter((e) =>
+    e.title.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
-    <div className="min-h-screen bg-black text-white p-10">
-      <h1 className="text-3xl font-bold mb-10">
-        Organizer Events
-      </h1>
+    <div className="p-6 text-white bg-black min-h-screen">
+      <h1 className="text-3xl font-bold mb-6">Organizer Events</h1>
 
-      {/* FORM */}
-      <div className="bg-zinc-900 p-6 rounded-xl mb-10">
-        <h2 className="text-xl mb-6">
-          {editingId ? "Edit Event" : "Create Event"}
-        </h2>
-
+      <div className="flex gap-4 mb-6">
         <input
-          name="title"
-          value={form.title}
-          onChange={handleChange}
-          placeholder="Title"
-          className="w-full p-3 mb-4 bg-black rounded"
+          placeholder="Search..."
+          className="p-2 rounded text-black"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
         />
-
-        <textarea
-          name="description"
-          value={form.description}
-          onChange={handleChange}
-          placeholder="Description"
-          className="w-full p-3 mb-4 bg-black rounded"
-        />
-
-        <input
-          name="location"
-          value={form.location}
-          onChange={handleChange}
-          placeholder="Location"
-          className="w-full p-3 mb-4 bg-black rounded"
-        />
-
-        <input
-          type="datetime-local"
-          name="start_date"
-          value={form.start_date}
-          onChange={handleChange}
-          className="w-full p-3 mb-4 bg-black rounded"
-        />
-
-        <input
-          type="datetime-local"
-          name="end_date"
-          value={form.end_date}
-          onChange={handleChange}
-          className="w-full p-3 mb-4 bg-black rounded"
-        />
-
-        <input
-          type="file"
-          name="image"
-          onChange={handleChange}
-          className="mb-4"
-        />
-
         <button
-          onClick={saveEvent}
-          className="bg-green-500 px-6 py-3 rounded text-black font-bold"
+          onClick={() => setShowCreate(true)}
+          className="bg-green-500 px-4 py-2 rounded"
         >
-          {editingId ? "Update" : "Create"}
+          + Create Event
         </button>
       </div>
 
-      {/* EVENTS LIST */}
       {loading ? (
         <p>Loading...</p>
       ) : (
-        <div className="grid md:grid-cols-3 gap-6">
-          {events.map((event) => (
-            <div
-              key={event.id}
-              className="bg-zinc-900 p-5 rounded-xl"
-            >
-              {event.image && (
-                <img
-                  src={event.image}
-                  className="w-full h-40 object-cover rounded-lg mb-4"
-                />
-              )}
+        filtered.map((event) => (
+          <div
+            key={event.id}
+            className="border border-gray-700 p-4 mb-4 rounded"
+          >
+            {event.image && (
+              <img
+                src={event.image}
+                className="w-full h-48 object-cover mb-3 rounded"
+              />
+            )}
 
-              <h2 className="font-bold text-lg">
-                {event.title}
-              </h2>
+            <h2 className="text-xl font-bold">{event.title}</h2>
+            <p>{event.location}</p>
+            <p>{event.category}</p>
 
-              <p className="text-gray-400">
-                {event.location}
-              </p>
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => openView(event)}
+                className="bg-blue-500 px-3 py-1 rounded"
+              >
+                View
+              </button>
 
-              <div className="flex gap-3 mt-4">
-                <button
-                  onClick={() => editEvent(event)}
-                  className="bg-yellow-500 px-3 py-1 rounded text-black"
-                >
-                  Edit
-                </button>
+              <button
+                onClick={() => openEdit(event)}
+                className="bg-yellow-500 px-3 py-1 rounded"
+              >
+                Edit
+              </button>
 
-                <button
-                  onClick={() => deleteEvent(event.id)}
-                  className="bg-red-600 px-3 py-1 rounded"
-                >
-                  Delete
-                </button>
-              </div>
+              <button
+                onClick={() => deleteEvent(event.id)}
+                className="bg-red-500 px-3 py-1 rounded"
+              >
+                Delete
+              </button>
             </div>
-          ))}
+          </div>
+        ))
+      )}
+
+      {/* CREATE / EDIT MODAL */}
+      {(showCreate || showEdit) && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center">
+          <div className="bg-gray-900 p-6 rounded w-96">
+            <h2 className="text-xl mb-4">
+              {showCreate ? "Create Event" : "Edit Event"}
+            </h2>
+
+            <input
+              className="w-full mb-2 p-2 text-black rounded"
+              placeholder="Title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+
+            <input
+              className="w-full mb-2 p-2 text-black rounded"
+              placeholder="Description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+
+            <input
+              className="w-full mb-2 p-2 text-black rounded"
+              placeholder="Location"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+            />
+
+            <input
+              type="datetime-local"
+              className="w-full mb-2 p-2 text-black rounded"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+
+            <input
+              type="datetime-local"
+              className="w-full mb-2 p-2 text-black rounded"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+
+            <input
+              type="file"
+              className="mb-2"
+              onChange={(e) => setImageFile(e.target.files[0])}
+            />
+
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={showCreate ? createEvent : updateEvent}
+                className="bg-green-500 px-3 py-1 rounded"
+              >
+                Save
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowCreate(false);
+                  setShowEdit(false);
+                  resetForm();
+                }}
+                className="bg-gray-500 px-3 py-1 rounded"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW MODAL */}
+      {showView && selectedEvent && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex justify-center items-center">
+          <div className="bg-gray-900 p-6 rounded w-96">
+            <h2 className="text-xl mb-4">{selectedEvent.title}</h2>
+
+            {selectedEvent.image && (
+              <img
+                src={selectedEvent.image}
+                className="w-full h-48 object-cover mb-3 rounded"
+              />
+            )}
+
+            <p>Location: {selectedEvent.location}</p>
+            <p>Category: {selectedEvent.category}</p>
+            <p>Start: {selectedEvent.start_date}</p>
+            <p>End: {selectedEvent.end_date}</p>
+            <p className="mt-3">{selectedEvent.description}</p>
+
+            <button
+              onClick={() => setShowView(false)}
+              className="bg-gray-500 px-3 py-1 rounded mt-4"
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
     </div>

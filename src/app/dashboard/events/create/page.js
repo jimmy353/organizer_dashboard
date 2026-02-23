@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function CreateEventPage() {
+export default function CreateEvent() {
   const router = useRouter();
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -11,6 +11,11 @@ export default function CreateEventPage() {
     title: "",
     description: "",
     location: "",
+    category: "music",
+    start_date: "",
+    end_date: "",
+    payout_done: false,
+    image: null,
   });
 
   async function handleSubmit(e) {
@@ -18,58 +23,100 @@ export default function CreateEventPage() {
 
     const token = localStorage.getItem("access");
 
-    const res = await fetch(`${API_URL}/api/events/create/`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: new FormData(e.target),
+    const formData = new FormData();
+    Object.keys(form).forEach((key) => {
+      if (form[key] !== null) formData.append(key, form[key]);
     });
 
-    if (res.ok) {
-      router.push("/dashboard/events");
-    }
+    await fetch(`${API_URL}/api/events/create/`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+
+    router.push("/dashboard/events");
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-10 flex justify-center">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white/5 backdrop-blur-xl p-10 rounded-3xl w-full max-w-lg"
-      >
-        <h1 className="text-3xl font-bold mb-8">
-          Create Event
-        </h1>
+    <div className="p-10 text-white max-w-3xl">
+      <h1 className="text-3xl font-bold mb-10">Create Event</h1>
 
+      <form onSubmit={handleSubmit} className="space-y-6">
         <input
-          name="title"
+          type="text"
           placeholder="Title"
-          className="w-full p-3 mb-4 bg-black border border-white/20 rounded-lg"
+          className="w-full p-4 bg-zinc-900 rounded-xl"
+          onChange={(e) =>
+            setForm({ ...form, title: e.target.value })
+          }
         />
 
         <textarea
-          name="description"
           placeholder="Description"
-          className="w-full p-3 mb-4 bg-black border border-white/20 rounded-lg"
+          className="w-full p-4 bg-zinc-900 rounded-xl"
+          onChange={(e) =>
+            setForm({ ...form, description: e.target.value })
+          }
         />
 
         <input
-          name="location"
+          type="text"
           placeholder="Location"
-          className="w-full p-3 mb-4 bg-black border border-white/20 rounded-lg"
+          className="w-full p-4 bg-zinc-900 rounded-xl"
+          onChange={(e) =>
+            setForm({ ...form, location: e.target.value })
+          }
         />
+
+        <input
+          type="datetime-local"
+          className="w-full p-4 bg-zinc-900 rounded-xl"
+          onChange={(e) =>
+            setForm({ ...form, start_date: e.target.value })
+          }
+        />
+
+        <input
+          type="datetime-local"
+          className="w-full p-4 bg-zinc-900 rounded-xl"
+          onChange={(e) =>
+            setForm({ ...form, end_date: e.target.value })
+          }
+        />
+
+        <select
+          className="w-full p-4 bg-zinc-900 rounded-xl"
+          onChange={(e) =>
+            setForm({ ...form, category: e.target.value })
+          }
+        >
+          <option value="music">Music</option>
+          <option value="sports">Sports</option>
+          <option value="nightlife">Nightlife</option>
+        </select>
 
         <input
           type="file"
-          name="image"
-          className="w-full mb-6"
+          onChange={(e) =>
+            setForm({ ...form, image: e.target.files[0] })
+          }
         />
 
-        <button
-          type="submit"
-          className="w-full bg-green-500 hover:bg-green-600 py-3 rounded-xl font-bold"
-        >
-          Create Event
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            onChange={(e) =>
+              setForm({
+                ...form,
+                payout_done: e.target.checked,
+              })
+            }
+          />
+          <label>Payout Done</label>
+        </div>
+
+        <button className="bg-green-500 px-6 py-3 rounded-xl">
+          Save Event
         </button>
       </form>
     </div>

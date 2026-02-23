@@ -1,57 +1,53 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 
-export default function EventDetailPage() {
+export default function ViewEvent() {
   const { id } = useParams();
+  const router = useRouter();
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
   const [event, setEvent] = useState(null);
 
   useEffect(() => {
+    fetchEvent();
+  }, []);
+
+  async function fetchEvent() {
     const token = localStorage.getItem("access");
 
-    fetch(`${API_URL}/api/events/${id}/`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((res) => res.json())
-      .then((data) => setEvent(data));
-  }, [id]);
+    const res = await fetch(`${API_URL}/api/events/${id}/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-  if (!event)
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
-        Loading...
-      </div>
-    );
+    const data = await res.json();
+    setEvent(data);
+  }
+
+  if (!event) return <p className="p-10 text-white">Loading...</p>;
 
   return (
-    <div className="min-h-screen bg-black text-white p-10">
-      <div className="max-w-4xl mx-auto bg-white/5 backdrop-blur-lg rounded-3xl p-8 shadow-2xl">
-        
-        {event.image && (
-          <img
-            src={event.image}
-            alt={event.title}
-            className="w-full h-80 object-cover rounded-2xl mb-6"
-          />
-        )}
+    <div className="p-10 text-white max-w-3xl">
+      {event.image && (
+        <img
+          src={event.image}
+          className="w-full h-64 object-cover rounded-xl mb-6"
+        />
+      )}
 
-        <h1 className="text-3xl font-bold mb-4">
-          {event.title}
-        </h1>
+      <h1 className="text-4xl font-bold mb-4">{event.title}</h1>
+      <p className="text-gray-400">{event.location}</p>
+      <p className="mt-6">{event.description}</p>
 
-        <p className="text-gray-400 mb-4">
-          {event.location}
-        </p>
-
-        <p className="text-gray-300">
-          {event.description}
-        </p>
-      </div>
+      <button
+        onClick={() =>
+          router.push(`/dashboard/events/${id}/edit`)
+        }
+        className="bg-yellow-500 px-6 py-3 rounded-xl mt-8"
+      >
+        Edit Event
+      </button>
     </div>
   );
 }

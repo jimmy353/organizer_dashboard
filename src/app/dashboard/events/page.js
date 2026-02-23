@@ -329,7 +329,7 @@ export default function EventsPage() {
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">
               Organizer Events
-              <span className="ml-3 rounded-full bg-blue-500/15 px-3 py-1 text-sm font-semibold text-blue-300">
+              <span className="ml-3 rounded-full bg-green-500/15 px-3 py-1 text-sm font-semibold text-green-300">
                 Event Control Centre
               </span>
             </h1>
@@ -458,7 +458,7 @@ export default function EventsPage() {
                     <div className="mt-5 flex flex-wrap gap-2">
                       <button
                         onClick={() => openView(ev)}
-                        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+                        className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-black hover:bg-green-400"
                       >
                         👁 View
                       </button>
@@ -615,7 +615,7 @@ export default function EventsPage() {
 function ModalShell({ title, onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3">
-      <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 shadow-2xl">
+      <div className="w-full max-w-md overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 shadow-2xl">
         <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
           <div className="text-base font-extrabold">{title}</div>
           <button

@@ -2,104 +2,78 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
   const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [companyDescription, setCompanyDescription] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [forgotVisible, setForgotVisible] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [forgotLoading, setForgotLoading] = useState(false);
-
-  /* ========================= */
-  /* LOGIN */
-  /* ========================= */
-
-  async function handleLogin(e) {
+  async function handleSignup(e) {
     e.preventDefault();
-    setLoading(true);
     setError("");
 
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      const res = await fetch(`${API_URL}/api/auth/login/`, {
+      const res = await fetch(`${API_URL}/api/auth/register/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          full_name: fullName,
+          email: email,
+          phone: phone,
+          company_name: companyName,
+          company_description: companyDescription,
+          password: password,
+          role: "organizer"
+        }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.detail || "Invalid credentials");
+        setError(
+          data.detail ||
+          data.error ||
+          JSON.stringify(data)
+        );
         setLoading(false);
         return;
       }
 
-      localStorage.setItem("access", data.access);
-      localStorage.setItem("refresh", data.refresh);
+      // ✅ SUCCESS → GO TO OTP PAGE
+      router.push(`/verify-otp?email=${email}`);
 
-      router.push("/dashboard/events");
-    } catch {
+    } catch (err) {
       setError("Network error");
     }
 
     setLoading(false);
   }
 
-  /* ========================= */
-  /* FORGOT PASSWORD */
-  /* ========================= */
-
-  async function handleForgotPassword() {
-    if (!forgotEmail) {
-      alert("Please enter your email");
-      return;
-    }
-
-    setForgotLoading(true);
-
-    try {
-      const res = await fetch(`${API_URL}/api/auth/forgot-password/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: forgotEmail }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        alert(data.detail || "Something went wrong");
-        setForgotLoading(false);
-        return;
-      }
-
-      alert("OTP Sent ✅");
-
-      setForgotVisible(false);
-      router.push(`/verify-otp?email=${forgotEmail}`);
-      setForgotEmail("");
-    } catch {
-      alert("Server error");
-    }
-
-    setForgotLoading(false);
-  }
-
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-6 text-white">
-
       <form
-        onSubmit={handleLogin}
+        onSubmit={handleSignup}
         className="w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl backdrop-blur-xl"
       >
         <h1 className="text-3xl font-bold text-[#7CFF00] mb-6 text-center">
-          Login
+          Organizer Sign Up
         </h1>
 
         {error && (
@@ -109,94 +83,86 @@ export default function LoginPage() {
         )}
 
         <input
+          type="text"
+          placeholder="Full Name"
+          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-4 outline-none"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+          required
+        />
+
+        <input
           type="email"
           placeholder="Email"
           className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-4 outline-none"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+
+        <input
+          type="text"
+          placeholder="Phone"
+          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-4 outline-none"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          required
+        />
+
+        <input
+          type="text"
+          placeholder="Company Name"
+          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-4 outline-none"
+          value={companyName}
+          onChange={(e) => setCompanyName(e.target.value)}
+          required
+        />
+
+        <input
+          type="text"
+          placeholder="Company Description"
+          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-4 outline-none"
+          value={companyDescription}
+          onChange={(e) => setCompanyDescription(e.target.value)}
+          required
         />
 
         <input
           type="password"
           placeholder="Password"
-          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-2 outline-none"
+          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-4 outline-none"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          required
         />
 
-        <div
-          onClick={() => {
-            setForgotEmail(email);
-            setForgotVisible(true);
-          }}
-          className="text-right text-[#7CFF00] font-bold text-sm mb-4 cursor-pointer"
-        >
-          Forgot Password?
-        </div>
+        <input
+          type="password"
+          placeholder="Confirm Password"
+          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-6 outline-none"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+        />
 
         <button
           type="submit"
           disabled={loading}
           className="w-full bg-[#7CFF00] text-black py-3 rounded-full font-bold"
         >
-          {loading ? "Logging in..." : "Login"}
+          {loading ? "Submitting..." : "Submit Organizer Request"}
         </button>
 
-        {/* SIGNUP LINK FIXED */}
         <p className="text-center text-gray-400 text-sm mt-6">
-          Don’t have an account?{" "}
-          <Link
-            href="/signup"
+          Already have an account?{" "}
+          <a
+            href="/login"
             className="text-[#7CFF00] font-bold hover:underline"
           >
-            Sign Up
-          </Link>
+            Login
+          </a>
         </p>
       </form>
-
-      {/* ============================= */}
-      {/* FORGOT PASSWORD MODAL */}
-      {/* ============================= */}
-
-      {forgotVisible && (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center px-6 z-50">
-          <div className="bg-[#111] border border-[#7CFF00]/40 p-8 rounded-2xl w-full max-w-md">
-
-            <h2 className="text-2xl font-bold text-[#7CFF00] text-center mb-3">
-              Forgot Password
-            </h2>
-
-            <p className="text-gray-400 text-center text-sm mb-5">
-              Enter your email and we will send you OTP to reset password.
-            </p>
-
-            <input
-              type="email"
-              placeholder="Email"
-              className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-5 outline-none"
-              value={forgotEmail}
-              onChange={(e) => setForgotEmail(e.target.value)}
-            />
-
-            <button
-              onClick={handleForgotPassword}
-              disabled={forgotLoading}
-              className="w-full bg-[#7CFF00] text-black py-3 rounded-full font-bold"
-            >
-              {forgotLoading ? "Sending..." : "Send OTP"}
-            </button>
-
-            <div
-              onClick={() => setForgotVisible(false)}
-              className="text-center text-gray-400 font-bold mt-4 cursor-pointer"
-            >
-              Cancel
-            </div>
-
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }

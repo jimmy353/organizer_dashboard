@@ -14,6 +14,7 @@ export default function SignupPage() {
   const [companyDescription, setCompanyDescription] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [idDocument, setIdDocument] = useState(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -27,21 +28,29 @@ export default function SignupPage() {
       return;
     }
 
+    if (!idDocument) {
+      setError("Please upload your ID or Passport");
+      return;
+    }
+
     setLoading(true);
 
     try {
+      const formData = new FormData();
+
+      formData.append("full_name", fullName);
+      formData.append("email", email);
+      formData.append("phone", phone);
+      formData.append("company_name", companyName);
+      formData.append("company_description", companyDescription);
+      formData.append("password", password);
+      formData.append("password2", confirmPassword);
+      formData.append("role", "organizer");
+      formData.append("id_document", idDocument);
+
       const res = await fetch(`${API_URL}/api/auth/register/`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          full_name: fullName,
-          email: email,
-          phone: phone,
-          company_name: companyName,
-          company_description: companyDescription,
-          password: password,
-          role: "organizer"
-        }),
+        body: formData,
       });
 
       const data = await res.json();
@@ -126,6 +135,20 @@ export default function SignupPage() {
           onChange={(e) => setCompanyDescription(e.target.value)}
           required
         />
+
+        {/* ID UPLOAD */}
+        <div className="mb-4">
+          <label className="block text-sm mb-2 text-gray-400">
+            Upload ID / Passport
+          </label>
+          <input
+            type="file"
+            accept="image/*,.pdf"
+            onChange={(e) => setIdDocument(e.target.files[0])}
+            className="w-full text-sm"
+            required
+          />
+        </div>
 
         <input
           type="password"

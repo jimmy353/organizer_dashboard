@@ -11,83 +11,81 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [companyName, setCompanyName] = useState("");
-  const [momoNumber, setMomoNumber] = useState("");
+  const [companyDescription, setCompanyDescription] = useState("");
   const [password, setPassword] = useState("");
-  const [password2, setPassword2] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   async function handleSignup(e) {
     e.preventDefault();
-    setLoading(true);
-    setMessage("");
+    setError("");
 
-    if (password !== password2) {
-      setMessage("Passwords do not match");
-      setLoading(false);
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
       return;
     }
+
+    setLoading(true);
 
     try {
       const res = await fetch(`${API_URL}/api/auth/register/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           full_name: fullName,
-          email,
-          phone,
-          password,
-          password2,
-          role: "organizer",
+          email: email,
+          phone: phone,
           company_name: companyName,
-          momo_number: momoNumber,
+          company_description: companyDescription,
+          password: password,
+          role: "organizer"
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        setMessage(data.detail || "Signup failed");
+        setError(
+          data.detail ||
+          data.error ||
+          JSON.stringify(data)
+        );
         setLoading(false);
         return;
       }
 
-      setMessage("Request Submitted ✅ We are reviewing your organizer request.");
+      // ✅ SUCCESS → GO TO OTP PAGE
+      router.push(`/verify-otp?email=${email}`);
 
-      setTimeout(() => {
-        router.push(`/verify-otp?email=${email}`);
-      }, 1500);
-
-    } catch {
-      setMessage("Network error");
+    } catch (err) {
+      setError("Network error");
     }
 
     setLoading(false);
   }
 
   return (
-    <div className="min-h-screen bg-[#0b1220] flex items-center justify-center text-white px-6">
+    <div className="min-h-screen bg-black flex items-center justify-center px-6 text-white">
       <form
         onSubmit={handleSignup}
-        className="bg-white/5 border border-white/10 backdrop-blur-xl p-10 rounded-3xl w-[450px] shadow-2xl"
+        className="w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl backdrop-blur-xl"
       >
-        <h1 className="text-3xl font-bold text-emerald-400 text-center mb-6">
+        <h1 className="text-3xl font-bold text-[#7CFF00] mb-6 text-center">
           Organizer Sign Up
         </h1>
 
-        {message && (
-          <div className="mb-4 text-center text-sm text-emerald-400">
-            {message}
+        {error && (
+          <div className="bg-red-500/20 text-red-400 p-3 rounded mb-4 text-sm text-center">
+            {error}
           </div>
         )}
 
         <input
           type="text"
           placeholder="Full Name"
-          className="w-full bg-white/10 border border-white/10 px-4 py-3 rounded-xl mb-4 outline-none"
+          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-4 outline-none"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           required
@@ -96,7 +94,7 @@ export default function SignupPage() {
         <input
           type="email"
           placeholder="Email"
-          className="w-full bg-white/10 border border-white/10 px-4 py-3 rounded-xl mb-4 outline-none"
+          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-4 outline-none"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -105,7 +103,7 @@ export default function SignupPage() {
         <input
           type="text"
           placeholder="Phone"
-          className="w-full bg-white/10 border border-white/10 px-4 py-3 rounded-xl mb-4 outline-none"
+          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-4 outline-none"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           required
@@ -114,7 +112,7 @@ export default function SignupPage() {
         <input
           type="text"
           placeholder="Company Name"
-          className="w-full bg-white/10 border border-white/10 px-4 py-3 rounded-xl mb-4 outline-none"
+          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-4 outline-none"
           value={companyName}
           onChange={(e) => setCompanyName(e.target.value)}
           required
@@ -122,17 +120,17 @@ export default function SignupPage() {
 
         <input
           type="text"
-          placeholder="MoMo Number"
-          className="w-full bg-white/10 border border-white/10 px-4 py-3 rounded-xl mb-4 outline-none"
-          value={momoNumber}
-          onChange={(e) => setMomoNumber(e.target.value)}
+          placeholder="Company Description"
+          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-4 outline-none"
+          value={companyDescription}
+          onChange={(e) => setCompanyDescription(e.target.value)}
           required
         />
 
         <input
           type="password"
           placeholder="Password"
-          className="w-full bg-white/10 border border-white/10 px-4 py-3 rounded-xl mb-4 outline-none"
+          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-4 outline-none"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -141,28 +139,28 @@ export default function SignupPage() {
         <input
           type="password"
           placeholder="Confirm Password"
-          className="w-full bg-white/10 border border-white/10 px-4 py-3 rounded-xl mb-6 outline-none"
-          value={password2}
-          onChange={(e) => setPassword2(e.target.value)}
+          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-6 outline-none"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
           required
         />
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-emerald-400 text-black py-3 rounded-xl font-bold hover:bg-emerald-500 transition"
+          className="w-full bg-[#7CFF00] text-black py-3 rounded-full font-bold"
         >
           {loading ? "Submitting..." : "Submit Organizer Request"}
         </button>
 
         <p className="text-center text-gray-400 text-sm mt-6">
           Already have an account?{" "}
-          <span
-            onClick={() => router.push("/login")}
-            className="text-emerald-400 font-bold cursor-pointer"
+          <a
+            href="/login"
+            className="text-[#7CFF00] font-bold hover:underline"
           >
             Login
-          </span>
+          </a>
         </p>
       </form>
     </div>

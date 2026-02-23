@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -12,7 +13,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Forgot password modal
   const [forgotVisible, setForgotVisible] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
@@ -45,7 +45,6 @@ export default function LoginPage() {
       localStorage.setItem("refresh", data.refresh);
 
       router.push("/dashboard/events");
-
     } catch {
       setError("Network error");
     }
@@ -85,7 +84,6 @@ export default function LoginPage() {
       setForgotVisible(false);
       router.push(`/verify-otp?email=${forgotEmail}`);
       setForgotEmail("");
-
     } catch {
       alert("Server error");
     }
@@ -96,7 +94,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-6 text-white">
 
-      {/* LOGIN CARD */}
       <form
         onSubmit={handleLogin}
         className="w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl backdrop-blur-xl"
@@ -145,15 +142,15 @@ export default function LoginPage() {
           {loading ? "Logging in..." : "Login"}
         </button>
 
-        {/* SIGNUP LINK */}
+        {/* SIGNUP LINK FIXED */}
         <p className="text-center text-gray-400 text-sm mt-6">
           Don’t have an account?{" "}
-          <span
-            onClick={() => router.push("/signup")}
-            className="text-[#7CFF00] font-bold cursor-pointer hover:underline"
+          <Link
+            href="/signup"
+            className="text-[#7CFF00] font-bold hover:underline"
           >
             Sign Up
-          </span>
+          </Link>
         </p>
       </form>
 

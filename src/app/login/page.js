@@ -36,7 +36,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.detail || "Login failed");
+        setError(data.detail || "Invalid credentials");
         setLoading(false);
         return;
       }
@@ -75,7 +75,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.detail || data.error || "Failed");
+        alert(data.detail || "Something went wrong");
         setForgotLoading(false);
         return;
       }
@@ -83,14 +83,11 @@ export default function LoginPage() {
       alert("OTP Sent ✅");
 
       setForgotVisible(false);
-
-      // redirect to verify otp page
       router.push(`/verify-otp?email=${forgotEmail}`);
-
       setForgotEmail("");
 
     } catch {
-      alert("Something went wrong");
+      alert("Server error");
     }
 
     setForgotLoading(false);
@@ -147,6 +144,17 @@ export default function LoginPage() {
         >
           {loading ? "Logging in..." : "Login"}
         </button>
+
+        {/* SIGNUP LINK */}
+        <p className="text-center text-gray-400 text-sm mt-6">
+          Don’t have an account?{" "}
+          <span
+            onClick={() => router.push("/register")}
+            className="text-[#7CFF00] font-bold cursor-pointer hover:underline"
+          >
+            Sign Up
+          </span>
+        </p>
       </form>
 
       {/* ============================= */}

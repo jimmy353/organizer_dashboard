@@ -15,7 +15,7 @@ import {
 /* Animated Counter */
 /* ========================= */
 
-function Counter({ value, prefix }) {
+function Counter({ value, prefix = "" }) {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
@@ -53,11 +53,26 @@ export default function DashboardPage() {
   useEffect(() => {
     const token = localStorage.getItem("access");
 
-    fetch("http://localhost:8000/api/orders/organizer/dashboard/", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((res) => res.json())
-      .then(setStats);
+    fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/orders/organizer/dashboard/`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    )
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Failed to load dashboard");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setStats(data);
+      })
+      .catch((err) => {
+        console.error("Dashboard error:", err);
+      });
   }, []);
 
   if (!stats)
@@ -67,13 +82,7 @@ export default function DashboardPage() {
       </div>
     );
 
-  const chartData = [
-    { month: "Jan", revenue: 120000 },
-    { month: "Feb", revenue: 180000 },
-    { month: "Mar", revenue: 220000 },
-    { month: "Apr", revenue: 300000 },
-    { month: "May", revenue: stats.total_revenue || 0 },
-  ];
+  const chartData = stats.monthly_revenue || [];
 
   return (
     <div className="min-h-screen bg-[#0b1220] text-white">

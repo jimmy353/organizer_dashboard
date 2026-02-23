@@ -22,17 +22,30 @@ export default function AnalyticsPage() {
   async function fetchAnalytics() {
     const token = localStorage.getItem("access");
 
-    const res = await fetch(
-      `http://127.0.0.1:8000/api/orders/organizer/advanced-analytics/?range=${range}`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/orders/organizer/advanced-analytics/?range=${range}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    const json = await res.json();
-    setData(json);
+      if (!res.ok) {
+        throw new Error("Failed to load analytics");
+      }
+
+      const json = await res.json();
+      setData(json);
+
+    } catch (err) {
+      console.error("Analytics error:", err);
+    }
   }
 
   function formatSSP(value) {
-    return `SSP ${Number(value).toLocaleString()}`;
+    return `SSP ${Number(value || 0).toLocaleString()}`;
   }
 
   function exportCSV() {
@@ -57,7 +70,12 @@ export default function AnalyticsPage() {
     a.click();
   }
 
-  if (!data) return <div className="min-h-screen bg-[#0b1120] text-white flex items-center justify-center">Loading...</div>;
+  if (!data)
+    return (
+      <div className="min-h-screen bg-[#0b1120] text-white flex items-center justify-center">
+        Loading...
+      </div>
+    );
 
   return (
     <div className="min-h-screen bg-[#0b1120] text-white p-10">
@@ -89,7 +107,7 @@ export default function AnalyticsPage() {
       {/* KPI */}
       <div className="grid md:grid-cols-4 gap-8 mb-16">
         <Card title="Total Revenue" value={formatSSP(data.total_revenue)} />
-        <Card title="Total Orders" value={data.total_orders} />
+        <Card title="Total Orders" value={data.total_orders || 0} />
         <Card title="Commission" value={formatSSP(data.total_commission)} />
         <Card title="Your Earnings" value={formatSSP(data.total_organizer_earnings)} />
       </div>
@@ -99,36 +117,50 @@ export default function AnalyticsPage() {
 
         <GlassCard title="Monthly Revenue">
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={data.monthly_revenue}>
+            <AreaChart data={data.monthly_revenue || []}>
               <CartesianGrid stroke="#1e293b" />
               <XAxis dataKey="month" stroke="#94a3b8" />
               <YAxis stroke="#94a3b8" />
               <Tooltip />
-              <Area type="monotone" dataKey="total" stroke="#22c55e" fill="#22c55e" />
+              <Area
+                type="monotone"
+                dataKey="total"
+                stroke="#22c55e"
+                fill="#22c55e"
+              />
             </AreaChart>
           </ResponsiveContainer>
         </GlassCard>
 
         <GlassCard title="Orders Timeline">
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={data.orders_timeline}>
+            <BarChart data={data.orders_timeline || []}>
               <CartesianGrid stroke="#1e293b" />
               <XAxis dataKey="month" stroke="#94a3b8" />
               <YAxis stroke="#94a3b8" />
               <Tooltip />
-              <Bar dataKey="orders" fill="#3b82f6" radius={[12,12,0,0]} />
+              <Bar
+                dataKey="orders"
+                fill="#3b82f6"
+                radius={[12,12,0,0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         </GlassCard>
 
         <GlassCard title="Top Events">
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={data.top_events}>
+            <LineChart data={data.top_events || []}>
               <CartesianGrid stroke="#1e293b" />
               <XAxis dataKey="event" stroke="#94a3b8" />
               <YAxis stroke="#94a3b8" />
               <Tooltip />
-              <Line type="monotone" dataKey="revenue" stroke="#facc15" strokeWidth={3}/>
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="#facc15"
+                strokeWidth={3}
+              />
             </LineChart>
           </ResponsiveContainer>
         </GlassCard>

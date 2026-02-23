@@ -9,9 +9,17 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Forgot password modal
+  const [forgotVisible, setForgotVisible] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+
+  /* ========================= */
+  /* LOGIN */
+  /* ========================= */
 
   async function handleLogin(e) {
     e.preventDefault();
@@ -21,107 +29,169 @@ export default function LoginPage() {
     try {
       const res = await fetch(`${API_URL}/api/auth/login/`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        // 🔥 If email not verified
-        if (data?.detail?.toLowerCase().includes("verify")) {
-          router.push(`/verify-otp?email=${email}`);
-          return;
-        }
-
         setError(data.detail || "Login failed");
         setLoading(false);
         return;
       }
 
-      // ✅ Save tokens
       localStorage.setItem("access", data.access);
       localStorage.setItem("refresh", data.refresh);
 
-      // Redirect to dashboard
       router.push("/dashboard/events");
 
-    } catch (err) {
-      setError("Network error. Try again.");
+    } catch {
+      setError("Network error");
     }
 
     setLoading(false);
   }
 
+  /* ========================= */
+  /* FORGOT PASSWORD */
+  /* ========================= */
+
+  async function handleForgotPassword() {
+    if (!forgotEmail) {
+      alert("Please enter your email");
+      return;
+    }
+
+    setForgotLoading(true);
+
+    try {
+      const res = await fetch(`${API_URL}/api/auth/forgot-password/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.detail || data.error || "Failed");
+        setForgotLoading(false);
+        return;
+      }
+
+      alert("OTP Sent ✅");
+
+      setForgotVisible(false);
+
+      // redirect to verify otp page
+      router.push(`/verify-otp?email=${forgotEmail}`);
+
+      setForgotEmail("");
+
+    } catch {
+      alert("Something went wrong");
+    }
+
+    setForgotLoading(false);
+  }
+
   return (
-    <div className="min-h-screen bg-[#0b1220] flex items-center justify-center px-6 text-white">
+    <div className="min-h-screen bg-black flex items-center justify-center px-6 text-white">
 
-      <div className="bg-white/5 border border-white/10 backdrop-blur-xl p-10 rounded-3xl w-[420px] shadow-2xl">
-
-        <h1 className="text-3xl font-bold text-emerald-400 text-center mb-6">
-          Organizer Login
+      {/* LOGIN CARD */}
+      <form
+        onSubmit={handleLogin}
+        className="w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-3xl shadow-2xl backdrop-blur-xl"
+      >
+        <h1 className="text-3xl font-bold text-[#7CFF00] mb-6 text-center">
+          Login
         </h1>
 
         {error && (
-          <div className="bg-red-500/20 text-red-400 p-3 rounded-xl mb-4 text-sm text-center">
+          <div className="bg-red-500/20 text-red-400 p-3 rounded mb-4 text-sm text-center">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleLogin}>
+        <input
+          type="email"
+          placeholder="Email"
+          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-4 outline-none"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-          <input
-            type="email"
-            placeholder="Email"
-            className="w-full bg-white/10 border border-white/10 px-4 py-3 rounded-xl mb-4 outline-none"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+        <input
+          type="password"
+          placeholder="Password"
+          className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-2 outline-none"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
 
-          <input
-            type="password"
-            placeholder="Password"
-            className="w-full bg-white/10 border border-white/10 px-4 py-3 rounded-xl mb-2 outline-none"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+        <div
+          onClick={() => {
+            setForgotEmail(email);
+            setForgotVisible(true);
+          }}
+          className="text-right text-[#7CFF00] font-bold text-sm mb-4 cursor-pointer"
+        >
+          Forgot Password?
+        </div>
 
-          {/* Forgot Password */}
-          <div className="text-right mb-6">
-            <span
-              onClick={() => router.push("/forgot-password")}
-              className="text-emerald-400 text-sm cursor-pointer hover:underline"
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-[#7CFF00] text-black py-3 rounded-full font-bold"
+        >
+          {loading ? "Logging in..." : "Login"}
+        </button>
+      </form>
+
+      {/* ============================= */}
+      {/* FORGOT PASSWORD MODAL */}
+      {/* ============================= */}
+
+      {forgotVisible && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center px-6 z-50">
+          <div className="bg-[#111] border border-[#7CFF00]/40 p-8 rounded-2xl w-full max-w-md">
+
+            <h2 className="text-2xl font-bold text-[#7CFF00] text-center mb-3">
+              Forgot Password
+            </h2>
+
+            <p className="text-gray-400 text-center text-sm mb-5">
+              Enter your email and we will send you OTP to reset password.
+            </p>
+
+            <input
+              type="email"
+              placeholder="Email"
+              className="w-full p-3 rounded-xl bg-white/10 border border-white/10 mb-5 outline-none"
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
+            />
+
+            <button
+              onClick={handleForgotPassword}
+              disabled={forgotLoading}
+              className="w-full bg-[#7CFF00] text-black py-3 rounded-full font-bold"
             >
-              Forgot Password?
-            </span>
+              {forgotLoading ? "Sending..." : "Send OTP"}
+            </button>
+
+            <div
+              onClick={() => setForgotVisible(false)}
+              className="text-center text-gray-400 font-bold mt-4 cursor-pointer"
+            >
+              Cancel
+            </div>
+
           </div>
+        </div>
+      )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-emerald-400 text-black font-bold py-3 rounded-xl transition hover:bg-emerald-500"
-          >
-            {loading ? "Logging in..." : "Login"}
-          </button>
-
-        </form>
-
-        {/* Sign Up */}
-        <p className="text-center text-gray-400 text-sm mt-6">
-          Don&apos;t have an account?{" "}
-          <span
-            onClick={() => router.push("/signup")}
-            className="text-emerald-400 font-bold cursor-pointer hover:underline"
-          >
-            Sign Up
-          </span>
-        </p>
-
-      </div>
     </div>
   );
 }

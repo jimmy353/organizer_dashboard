@@ -14,7 +14,7 @@ export default function Home() {
     } else {
       router.replace("/login");
     }
-  }, []);
+  }, [router]); // ✅ add router here
 
   return null;
 }

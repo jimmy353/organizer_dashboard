@@ -16,8 +16,20 @@ export default function AnalyticsPage() {
   const [range, setRange] = useState("all");
 
   useEffect(() => {
-    fetchAnalytics();
-  }, [range]);
+  async function fetchAnalytics() {
+    const token = localStorage.getItem("access");
+
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/orders/organizer/advanced-analytics/?range=${range}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+
+    const json = await res.json();
+    setData(json);
+  }
+
+  fetchAnalytics();
+}, [range]);
 
   async function fetchAnalytics() {
     const token = localStorage.getItem("access");

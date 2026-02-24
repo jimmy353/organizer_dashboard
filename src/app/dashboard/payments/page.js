@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-/* ---------------- API HELPER ---------------- */
+/* ================= API HELPER ================= */
 
 async function apiFetch(path, options = {}) {
   const token =
@@ -24,14 +24,12 @@ async function apiFetch(path, options = {}) {
 
   try {
     data = text ? JSON.parse(text) : null;
-  } catch {
-    data = null;
-  }
+  } catch {}
 
   return { res, data };
 }
 
-/* ---------------- HELPERS ---------------- */
+/* ================= HELPERS ================= */
 
 function money(n) {
   return Number(n || 0).toFixed(2);
@@ -48,6 +46,7 @@ export default function PaymentsPage() {
   const [events, setEvents] = useState([]);
   const [payments, setPayments] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [selectedPayment, setSelectedPayment] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -57,43 +56,33 @@ export default function PaymentsPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedEvent) {
-      fetchPayments(selectedEvent.id);
-    }
+    if (selectedEvent) fetchPayments(selectedEvent.id);
   }, [selectedEvent]);
 
   async function fetchEvents() {
-    try {
-      setLoading(true);
+    setLoading(true);
 
-      const { res, data } = await apiFetch("/api/events/organizer/");
+    const { res, data } = await apiFetch("/api/events/organizer/");
 
-      if (res.ok) {
-        setEvents(data);
-        if (data.length > 0) setSelectedEvent(data[0]);
-      }
-    } catch (err) {
-      setError("Failed to load events.");
-    } finally {
-      setLoading(false);
+    if (res.ok) {
+      setEvents(data);
+      if (data.length > 0) setSelectedEvent(data[0]);
     }
+
+    setLoading(false);
   }
 
   async function fetchPayments(eventId) {
-    try {
-      setLoading(true);
+    setLoading(true);
 
-      const { res, data } = await apiFetch(
-        `/api/payments/organizer/?event=${eventId}`
-      );
+    const { res, data } = await apiFetch(
+      `/api/payments/organizer/?event=${eventId}`
+    );
 
-      if (res.ok) setPayments(data);
-      else setError("Failed to load payments.");
-    } catch {
-      setError("Failed to load payments.");
-    } finally {
-      setLoading(false);
-    }
+    if (res.ok) setPayments(data);
+    else setError("Failed to load payments.");
+
+    setLoading(false);
   }
 
   async function requestWithdrawal() {
@@ -117,7 +106,7 @@ export default function PaymentsPage() {
     }
   }
 
-  /* ---------------- SUMMARY ---------------- */
+  /* ================= SUMMARY ================= */
 
   const totalRevenue = useMemo(
     () => payments.reduce((sum, p) => sum + Number(p.amount || 0), 0),
@@ -135,11 +124,57 @@ export default function PaymentsPage() {
     [payments]
   );
 
+  const commissionPercent =
+    totalRevenue > 0
+      ? ((totalCommission / totalRevenue) * 100).toFixed(2)
+      : 0;
+
+  const hasPending = payments.some(
+    (p) => p.payout_status !== "paid"
+  );
+
+  /* ================= CSV EXPORT ================= */
+
+  function exportCSV() {
+    const headers = [
+      "Amount",
+      "Commission",
+      "Organizer",
+      "Provider",
+      "Customer",
+      "Status",
+      "Date",
+    ];
+
+    const rows = payments.map((p) => [
+      p.amount,
+      p.commission,
+      p.organizer_amount,
+      p.provider,
+      p.customer_email,
+      p.payout_status,
+      formatDate(p.created_at),
+    ]);
+
+    const csv =
+      headers.join(",") +
+      "\n" +
+      rows.map((r) => r.join(",")).join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "payments.csv";
+    a.click();
+  }
+
   /* ======================================================== */
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <div className="mx-auto max-w-6xl px-4 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8">
 
         {/* HEADER */}
         <div className="flex flex-col md:flex-row md:justify-between gap-4">
@@ -148,16 +183,25 @@ export default function PaymentsPage() {
               Organizer Payments
             </h1>
             <p className="text-sm text-zinc-400">
-              Track payouts and earnings.
+              Stripe-style payout tracking dashboard.
             </p>
           </div>
 
-          <button
-            onClick={() => fetchPayments(selectedEvent?.id)}
-            className="bg-white/10 px-6 py-3 rounded-xl hover:bg-white/20"
-          >
-            Refresh
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={exportCSV}
+              className="bg-white/10 px-5 py-3 rounded-xl hover:bg-white/20"
+            >
+              Export CSV
+            </button>
+
+            <button
+              onClick={requestWithdrawal}
+              className="bg-green-500 text-black font-bold px-5 py-3 rounded-xl hover:bg-green-400"
+            >
+              Request Withdrawal
+            </button>
+          </div>
         </div>
 
         {/* EVENT SELECT */}
@@ -179,8 +223,15 @@ export default function PaymentsPage() {
           </select>
         </div>
 
+        {/* PENDING ALERT */}
+        {hasPending && (
+          <div className="mt-6 bg-yellow-500/10 border border-yellow-500/40 p-4 rounded-xl text-yellow-300">
+            ⚠ Some payouts are still pending.
+          </div>
+        )}
+
         {/* SUMMARY CARDS */}
-        <div className="mt-6 grid md:grid-cols-3 gap-4">
+        <div className="mt-6 grid md:grid-cols-4 gap-4">
           <Stat label="Revenue" value={`SSP ${money(totalRevenue)}`} />
           <Stat
             label="Commission"
@@ -192,24 +243,12 @@ export default function PaymentsPage() {
             value={`SSP ${money(totalOrganizer)}`}
             green
           />
+          <Stat
+            label="Commission %"
+            value={`${commissionPercent}%`}
+            blue
+          />
         </div>
-
-        {/* WITHDRAW BUTTON */}
-        <div className="mt-6">
-          <button
-            onClick={requestWithdrawal}
-            className="bg-green-500 text-black font-bold px-6 py-3 rounded-xl hover:bg-green-400"
-          >
-            Request Withdrawal
-          </button>
-        </div>
-
-        {/* ERROR */}
-        {error && (
-          <div className="mt-4 bg-red-500/10 border border-red-500/30 p-4 rounded-xl text-red-300">
-            {error}
-          </div>
-        )}
 
         {/* LIST */}
         <div className="mt-8">
@@ -218,100 +257,65 @@ export default function PaymentsPage() {
             <div className="text-center text-zinc-500">
               Loading payments...
             </div>
-          ) : payments.length === 0 ? (
-            <div className="text-center text-zinc-500">
-              No payments found.
-            </div>
           ) : (
-            <>
-              {/* DESKTOP TABLE */}
-              <div className="hidden md:block border border-zinc-800 rounded-2xl overflow-hidden">
-                {payments.map((p) => (
-                  <div
-                    key={p.id}
-                    className="grid grid-cols-6 items-center px-6 py-4 border-b border-zinc-800 hover:bg-white/5"
-                  >
-                    <div className="font-bold">
-                      SSP {money(p.amount)}
-                    </div>
-                    <div>{p.provider?.toUpperCase()}</div>
-                    <div>{p.customer_email}</div>
-                    <div>{p.ticket_type_name}</div>
-                    <div>{formatDate(p.created_at)}</div>
+            <div className="hidden md:block border border-zinc-800 rounded-2xl overflow-hidden">
 
-                    <div className="flex justify-end">
-                      <span
-                        className={`px-4 py-2 rounded-full text-sm font-semibold capitalize
-                          ${
-                            p.payout_status === "paid"
-                              ? "bg-green-500 text-black"
-                              : "bg-yellow-500 text-black"
-                          }`}
-                      >
-                        {p.payout_status || "unpaid"}
-                      </span>
-                    </div>
+              {payments.map((p) => (
+                <div
+                  key={p.id}
+                  onClick={() => setSelectedPayment(p)}
+                  className="grid grid-cols-7 items-center px-6 py-4 border-b border-zinc-800 hover:bg-white/5 cursor-pointer"
+                >
+                  <div className="font-bold">
+                    SSP {money(p.amount)}
                   </div>
-                ))}
-              </div>
 
-              {/* MOBILE CARDS */}
-              <div className="md:hidden space-y-4">
-                {payments.map((p) => (
-                  <div
-                    key={p.id}
-                    className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4"
-                  >
-                    <div className="text-green-400 font-bold text-lg">
-                      SSP {money(p.amount)}
-                    </div>
+                  <div>SSP {money(p.commission)}</div>
+                  <div>SSP {money(p.organizer_amount)}</div>
+                  <div>{p.provider?.toUpperCase()}</div>
+                  <div>{p.customer_email}</div>
+                  <div>{formatDate(p.created_at)}</div>
 
-                    <div className="mt-2 text-sm text-zinc-400">
-                      {p.provider?.toUpperCase()}
-                    </div>
-
-                    <div className="mt-2 text-sm">
-                      {p.customer_email}
-                    </div>
-
-                    <div className="mt-2 text-sm">
-                      {p.ticket_type_name}
-                    </div>
-
-                    <div className="mt-2 text-sm">
-                      {formatDate(p.created_at)}
-                    </div>
-
-                    <div className="mt-3">
-                      <span
-                        className={`px-4 py-2 rounded-full text-sm font-semibold capitalize
-                          ${
-                            p.payout_status === "paid"
-                              ? "bg-green-500 text-black"
-                              : "bg-yellow-500 text-black"
-                          }`}
-                      >
-                        {p.payout_status || "unpaid"}
-                      </span>
-                    </div>
+                  <div className="flex justify-end">
+                    <span
+                      className={`px-4 py-2 rounded-full text-sm font-semibold capitalize animate-pulse
+                        ${
+                          p.payout_status === "paid"
+                            ? "bg-green-500 text-black"
+                            : "bg-yellow-500 text-black"
+                        }`}
+                    >
+                      {p.payout_status || "unpaid"}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </>
+                </div>
+              ))}
+
+            </div>
           )}
         </div>
+
+        {/* PAYMENT MODAL */}
+        {selectedPayment && (
+          <PaymentModal
+            payment={selectedPayment}
+            onClose={() => setSelectedPayment(null)}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-/* ---------------- STAT CARD ---------------- */
+/* ================= STAT CARD ================= */
 
-function Stat({ label, value, green, yellow }) {
+function Stat({ label, value, green, yellow, blue }) {
   const color = green
     ? "text-green-400"
     : yellow
     ? "text-yellow-400"
+    : blue
+    ? "text-sky-400"
     : "text-white";
 
   return (
@@ -320,6 +324,45 @@ function Stat({ label, value, green, yellow }) {
       <div className={`mt-2 text-2xl font-extrabold ${color}`}>
         {value}
       </div>
+    </div>
+  );
+}
+
+/* ================= PAYMENT MODAL ================= */
+
+function PaymentModal({ payment, onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-md p-6">
+        <h2 className="text-xl font-extrabold mb-4">
+          Payment Details
+        </h2>
+
+        <Detail label="Amount" value={`SSP ${money(payment.amount)}`} />
+        <Detail label="Commission" value={`SSP ${money(payment.commission)}`} />
+        <Detail label="Organizer" value={`SSP ${money(payment.organizer_amount)}`} />
+        <Detail label="Provider" value={payment.provider} />
+        <Detail label="Customer" value={payment.customer_email} />
+        <Detail label="Ticket" value={payment.ticket_type_name} />
+        <Detail label="Status" value={payment.payout_status} />
+        <Detail label="Date" value={formatDate(payment.created_at)} />
+
+        <button
+          onClick={onClose}
+          className="mt-6 w-full bg-green-500 text-black font-bold py-3 rounded-xl"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Detail({ label, value }) {
+  return (
+    <div className="flex justify-between text-sm mb-2">
+      <div className="text-zinc-400">{label}</div>
+      <div className="font-bold">{value}</div>
     </div>
   );
 }

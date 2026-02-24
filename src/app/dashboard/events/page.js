@@ -442,55 +442,61 @@ export default function EventsPage() {
                   </div>
 
                   <div className="p-5">
-                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                      <div className="min-w-0">
-                        <h3 className="text-xl font-extrabold leading-snug break-words">
-                          {ev.title || "Untitled"}
-                        </h3>
-                        <p className="mt-1 text-sm text-zinc-400 break-words">
-                          📍 {ev.location || "N/A"}
-                        </p>
-                      </div>
+                    <div className="flex flex-col gap-3">
 
-                      <div className="w-full sm:w-auto sm:min-w-[190px] rounded-2xl border border-zinc-800 bg-black/30 p-3 text-right text-xs text-zinc-400">
-                        <div>🕒 Start</div>
-                        <div className="font-semibold text-zinc-200">
-                          {formatPretty(ev.start_date)}
-                        </div>
-                        <div className="mt-2">🕒 End</div>
-                        <div className="font-semibold text-zinc-200">
-                          {formatPretty(ev.end_date)}
-                        </div>
-                      </div>
-                    </div>
+  <div className="min-w-0">
+    <h3 className="text-xl font-extrabold leading-snug break-words">
+      {ev.title || "Untitled"}
+    </h3>
+
+    <p className="mt-1 text-sm text-zinc-400 break-words">
+      📍 {ev.location || "N/A"}
+    </p>
+
+    <div className="mt-3 text-xs text-zinc-400">
+      <div>🕒 Start</div>
+      <div className="font-semibold text-zinc-200">
+        {formatPretty(ev.start_date)}
+      </div>
+
+      <div className="mt-2">🕒 End</div>
+      <div className="font-semibold text-zinc-200">
+        {formatPretty(ev.end_date)}
+      </div>
+    </div>
+  </div>
+
+</div>
 
                     <p className="mt-3 line-clamp-2 text-sm text-zinc-300">
                       {ev.description || "No description"}
                     </p>
 
                     {/* buttons (colored) */}
-                    <div className="mt-5 flex flex-col sm:flex-row flex-wrap gap-2">
-                      <button
-                        onClick={() => openView(ev)}
-                        className="w-full sm:w-auto rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-black hover:bg-green-400"
-                      >
-                        👁 View
-                      </button>
+                    <div className="mt-5 flex flex-row flex-wrap gap-2">
 
-                      <button
-                        onClick={() => openEdit(ev)}
-                        className="w-full sm:w-auto rounded-xl bg-yellow-500 px-4 py-2 text-sm font-semibold text-black hover:bg-yellow-400"
-                      >
-                        ✏️ Edit
-                      </button>
+                   <button
+                    onClick={() => openView(ev)}
+                    className="flex-1 sm:flex-none rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-black hover:bg-green-400"
+                   >
+                    👁 View
+                   </button>
 
-                      <button
-                        onClick={() => handleDelete(ev)}
-                        className="w-full sm:w-auto rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500"
-                      >
-                        🗑 Delete
-                      </button>
-                    </div>
+                   <button
+                    onClick={() => openEdit(ev)}
+                    className="flex-1 sm:flex-none rounded-xl bg-yellow-500 px-4 py-2 text-sm font-semibold text-black hover:bg-yellow-400"
+                   >
+                    ✏️ Edit
+                   </button>
+
+                   <button
+                    onClick={() => handleDelete(ev)}
+                    className="flex-1 sm:flex-none rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500"
+                   >
+                     🗑 Delete
+                   </button>
+
+                   </div>
                   </div>
                 </div>
               ))}

@@ -90,16 +90,16 @@ export default function AnalyticsPage() {
     );
 
   return (
-    <div className="min-h-screen bg-[#0b1120] text-white p-10">
+    <div className="min-h-screen bg-[#0b1120] text-white px-4 py-6 sm:p-10">
 
-      <div className="flex justify-between items-center mb-10">
-        <h1 className="text-4xl font-bold">📊 Analytics Dashboard</h1>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-10">
+        <h1 className="text-2xl sm:text-4xl font-bold break-words">📊 Analytics Dashboard</h1>
 
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full md:w-auto">
           <select
             value={range}
             onChange={(e) => setRange(e.target.value)}
-            className="bg-[#1f2937] px-4 py-2 rounded-xl"
+            className="w-full sm:w-auto bg-[#1f2937] px-4 py-2 rounded-xl"
           >
             <option value="all">All Time</option>
             <option value="7d">Last 7 Days</option>
@@ -109,7 +109,7 @@ export default function AnalyticsPage() {
 
           <button
             onClick={exportCSV}
-            className="bg-green-500 px-4 py-2 rounded-xl"
+            className="w-full sm:w-auto bg-green-500 px-4 py-2 rounded-xl"
           >
             Export CSV
           </button>
@@ -117,7 +117,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* KPI */}
-      <div className="grid md:grid-cols-4 gap-8 mb-16">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 mb-12 sm:mb-16">
         <Card title="Total Revenue" value={formatSSP(data.total_revenue)} />
         <Card title="Total Orders" value={data.total_orders || 0} />
         <Card title="Commission" value={formatSSP(data.total_commission)} />
@@ -125,7 +125,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* Charts */}
-      <div className="grid md:grid-cols-2 gap-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-10">
 
         <GlassCard title="Monthly Revenue">
           <ResponsiveContainer width="100%" height={300}>
@@ -194,7 +194,7 @@ export default function AnalyticsPage() {
 
 function Card({ title, value }) {
   return (
-    <div className="p-8 rounded-3xl bg-gradient-to-br from-[#111827] to-[#1f2937] border border-[#1e293b] shadow-2xl">
+    <div className="p-4 sm:p-8 rounded-3xl bg-gradient-to-br from-[#111827] to-[#1f2937] border border-[#1e293b] shadow-2xl">
       <p className="text-gray-400">{title}</p>
       <h2 className="text-3xl font-bold mt-4">{value}</h2>
     </div>
@@ -203,8 +203,8 @@ function Card({ title, value }) {
 
 function GlassCard({ title, children }) {
   return (
-    <div className="p-8 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl">
-      <h2 className="mb-6 text-lg font-semibold text-gray-300">{title}</h2>
+    <div className="p-5 sm:p-8 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl">
+      <h2 className="text-2xl sm:text-3xl font-bold mt-4">{title}</h2>
       {children}
     </div>
   );

@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// ---------------- API HELPER ----------------
+/* ---------------- API HELPER ---------------- */
+
 async function apiFetch(path) {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("access") : null;
@@ -27,7 +28,8 @@ async function apiFetch(path) {
   return { res, data };
 }
 
-// ---------------- HELPERS ----------------
+/* ---------------- HELPERS ---------------- */
+
 function formatDate(date) {
   if (!date) return "Unknown";
   return new Date(date).toLocaleString();
@@ -37,17 +39,7 @@ function money(value) {
   return Number(value || 0).toFixed(2);
 }
 
-function statusColor(status) {
-  if (status === "paid") return "text-green-400 border-green-500/40";
-  if (status === "pending") return "text-yellow-400 border-yellow-500/40";
-  if (status === "refunded") return "text-red-400 border-red-500/40";
-  if (status === "refund_requested") return "text-sky-400 border-sky-500/40";
-  return "text-zinc-400 border-zinc-500/40";
-}
-
-// ========================================================
-// ====================== PAGE ============================
-// ========================================================
+/* ======================================================== */
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -88,7 +80,7 @@ export default function OrdersPage() {
     }
   }
 
-  // ---------------- FILTERING ----------------
+  /* ---------------- FILTERING ---------------- */
 
   const filteredOrders = useMemo(() => {
     let list = [...orders];
@@ -116,7 +108,7 @@ export default function OrdersPage() {
     );
   }, [orders, selectedEvent, search]);
 
-  // ---------------- SUMMARY ----------------
+  /* ---------------- SUMMARY ---------------- */
 
   const summary = useMemo(() => {
     return {
@@ -136,9 +128,7 @@ export default function OrdersPage() {
     };
   }, [filteredOrders]);
 
-  // ========================================================
-  // ====================== UI ==============================
-  // ========================================================
+  /* ======================================================== */
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -188,19 +178,20 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        {/* ERROR */}
-        {error && (
-          <div className="mt-4 bg-red-500/10 border border-red-500/30 p-4 rounded-xl text-red-300">
-            {error}
-          </div>
-        )}
-
         {/* SUMMARY */}
         <div className="mt-6 grid md:grid-cols-4 gap-4">
           <Stat label="Orders" value={summary.totalOrders} />
           <Stat label="Revenue" value={`SSP ${money(summary.totalRevenue)}`} />
-          <Stat label="Commission" value={`SSP ${money(summary.totalCommission)}`} yellow />
-          <Stat label="Organizer" value={`SSP ${money(summary.totalOrganizer)}`} green />
+          <Stat
+            label="Commission"
+            value={`SSP ${money(summary.totalCommission)}`}
+            yellow
+          />
+          <Stat
+            label="Organizer"
+            value={`SSP ${money(summary.totalOrganizer)}`}
+            green
+          />
         </div>
 
         {/* LIST */}
@@ -212,31 +203,43 @@ export default function OrdersPage() {
             <div className="text-center text-zinc-500">No orders found.</div>
           ) : (
             <>
-              {/* DESKTOP TABLE */}
+              {/* DESKTOP */}
               <div className="hidden md:block rounded-2xl overflow-hidden border border-zinc-800">
                 {filteredOrders.map((o) => (
                   <div
                     key={o.id}
                     onClick={() => setSelectedOrder(o)}
-                    className="grid grid-cols-6 gap-4 px-6 py-4 border-b border-zinc-800 hover:bg-white/5 cursor-pointer"
+                    className="grid grid-cols-6 items-center px-6 py-4 border-b border-zinc-800 hover:bg-white/5 cursor-pointer"
                   >
                     <div className="font-bold">#{o.id}</div>
                     <div>{o.event_title}</div>
                     <div>{o.customer_email}</div>
                     <div>{o.ticket_type_name}</div>
                     <div>SSP {money(o.total_amount)}</div>
-                    <div
-                      className={`border px-2 py-1 rounded-full text-xs font-bold ${statusColor(
-                        o.status
-                      )}`}
-                    >
-                      {o.status}
+
+                    <div className="flex justify-end">
+                      <span
+                        className={`inline-flex items-center justify-center min-w-[100px] px-5 py-2 text-sm font-semibold rounded-full capitalize
+                          ${
+                            o.status === "paid"
+                              ? "bg-green-500 text-black shadow-md shadow-green-500/20"
+                              : o.status === "pending"
+                              ? "bg-yellow-500 text-black"
+                              : o.status === "refunded"
+                              ? "bg-red-500 text-white"
+                              : o.status === "refund_requested"
+                              ? "bg-sky-500 text-black"
+                              : "bg-zinc-700 text-white"
+                          }`}
+                      >
+                        {o.status}
+                      </span>
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* MOBILE CARDS */}
+              {/* MOBILE */}
               <div className="md:hidden space-y-4">
                 {filteredOrders.map((o) => (
                   <div
@@ -246,22 +249,23 @@ export default function OrdersPage() {
                   >
                     <div className="flex justify-between">
                       <div className="font-bold">Order #{o.id}</div>
-                      <div
-                         className={`inline-flex items-center justify-center min-w-[90px] px-4 py-2 text-sm font-semibold rounded-full capitalize
-                       ${
-                         o.status === "paid"
-                         ? "bg-green-500 text-black shadow-md shadow-green-500/20"
-                         : o.status === "pending"
-                         ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/40"
-                         : o.status === "refunded"
-                         ? "bg-red-500/15 text-red-400 border border-red-500/40"
-                         : o.status === "refund_requested"
-                         ? "bg-sky-500/15 text-sky-400 border border-sky-500/40"
-                         : "bg-zinc-500/10 text-zinc-400 border border-zinc-500/40"
-                       }`}
-                    >
-                       {o.status}
-                    </div>
+
+                      <span
+                        className={`inline-flex items-center justify-center min-w-[90px] px-4 py-2 text-sm font-semibold rounded-full capitalize
+                          ${
+                            o.status === "paid"
+                              ? "bg-green-500 text-black shadow-md shadow-green-500/20"
+                              : o.status === "pending"
+                              ? "bg-yellow-500 text-black"
+                              : o.status === "refunded"
+                              ? "bg-red-500 text-white"
+                              : o.status === "refund_requested"
+                              ? "bg-sky-500 text-black"
+                              : "bg-zinc-700 text-white"
+                          }`}
+                      >
+                        {o.status}
+                      </span>
                     </div>
 
                     <div className="mt-2 text-green-400 font-bold">
@@ -291,7 +295,7 @@ export default function OrdersPage() {
   );
 }
 
-// ---------------- COMPONENTS ----------------
+/* ---------------- COMPONENTS ---------------- */
 
 function Stat({ label, value, green, yellow }) {
   const color = green

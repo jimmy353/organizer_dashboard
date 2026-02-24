@@ -92,7 +92,7 @@ export default function LoginPage() {
     localStorage.setItem("refresh", data.refresh);
     localStorage.setItem("role", "organizer");
 
-    router.push("/dashboard/events");
+    router.push("/dashboard");
 
   } catch {
     setError("Network error");

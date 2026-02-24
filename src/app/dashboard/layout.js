@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   BarChart3,
   Calendar,
+  Ticket,
   ShoppingCart,
   CreditCard,
   RotateCcw,

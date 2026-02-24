@@ -89,8 +89,9 @@ export default function TicketsPage() {
   }
 
   useEffect(() => {
-    fetchEvents();
-  }, []);
+  fetchEvents();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
   // ---------- CREATE ----------
   async function handleCreate() {

@@ -62,7 +62,14 @@ async function apiFetch(path, options = {}) {
   return { res, data };
 }
 
-const CATEGORIES = ["music", "comedy", "nightlife", "conference", "sports", "other"];
+const CATEGORIES = [
+  "music",
+  "comedy",
+  "nightlife",
+  "conference",
+  "sports",
+  "other",
+];
 
 export default function EventsPage() {
   const [events, setEvents] = useState([]);
@@ -310,11 +317,17 @@ export default function EventsPage() {
     }
 
     if (sortBy === "newest") {
-      list.sort((a, b) => new Date(b.start_date || 0) - new Date(a.start_date || 0));
+      list.sort(
+        (a, b) => new Date(b.start_date || 0) - new Date(a.start_date || 0)
+      );
     } else if (sortBy === "oldest") {
-      list.sort((a, b) => new Date(a.start_date || 0) - new Date(b.start_date || 0));
+      list.sort(
+        (a, b) => new Date(a.start_date || 0) - new Date(b.start_date || 0)
+      );
     } else if (sortBy === "start_soon") {
-      list.sort((a, b) => new Date(a.start_date || 0) - new Date(b.start_date || 0));
+      list.sort(
+        (a, b) => new Date(a.start_date || 0) - new Date(b.start_date || 0)
+      );
     }
 
     return list;
@@ -323,13 +336,13 @@ export default function EventsPage() {
   // ---------- UI ----------
   return (
     <div className="min-h-screen bg-black text-white">
-      <div className="mx-auto max-w-6xl px-4 py-8">
+      <div className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
         {/* Header */}
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">
-              Organizer Events
-              <span className="ml-3 rounded-full bg-green-500/15 px-3 py-1 text-sm font-semibold text-green-300">
+          <div className="min-w-0">
+            <h1 className="flex flex-wrap items-center gap-2 text-2xl sm:text-3xl font-extrabold tracking-tight">
+              <span className="break-words">Organizer Events</span>
+              <span className="rounded-full bg-green-500/15 px-3 py-1 text-xs sm:text-sm font-semibold text-green-300">
                 Event Control Centre
               </span>
             </h1>
@@ -337,7 +350,7 @@ export default function EventsPage() {
 
           <button
             onClick={openCreate}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-5 py-3 text-black font-bold shadow-lg shadow-green-500/20 hover:bg-green-400 active:scale-[0.99]"
+            className="inline-flex w-full md:w-auto items-center justify-center gap-2 rounded-xl bg-green-500 px-5 py-3 text-black font-bold shadow-lg shadow-green-500/20 hover:bg-green-400 active:scale-[0.99]"
           >
             <span className="text-lg">＋</span> Create Event
           </button>
@@ -429,16 +442,17 @@ export default function EventsPage() {
                   </div>
 
                   <div className="p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-xl font-extrabold leading-snug">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="text-xl font-extrabold leading-snug break-words">
                           {ev.title || "Untitled"}
                         </h3>
-                        <p className="mt-1 text-sm text-zinc-400">
+                        <p className="mt-1 text-sm text-zinc-400 break-words">
                           📍 {ev.location || "N/A"}
                         </p>
                       </div>
-                      <div className="text-right text-xs text-zinc-400">
+
+                      <div className="w-full sm:w-auto sm:min-w-[190px] rounded-2xl border border-zinc-800 bg-black/30 p-3 text-right text-xs text-zinc-400">
                         <div>🕒 Start</div>
                         <div className="font-semibold text-zinc-200">
                           {formatPretty(ev.start_date)}
@@ -455,24 +469,24 @@ export default function EventsPage() {
                     </p>
 
                     {/* buttons (colored) */}
-                    <div className="mt-5 flex flex-wrap gap-2">
+                    <div className="mt-5 flex flex-col sm:flex-row flex-wrap gap-2">
                       <button
                         onClick={() => openView(ev)}
-                        className="rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-black hover:bg-green-400"
+                        className="w-full sm:w-auto rounded-xl bg-green-500 px-4 py-2 text-sm font-semibold text-black hover:bg-green-400"
                       >
                         👁 View
                       </button>
 
                       <button
                         onClick={() => openEdit(ev)}
-                        className="rounded-xl bg-yellow-500 px-4 py-2 text-sm font-semibold text-black hover:bg-yellow-400"
+                        className="w-full sm:w-auto rounded-xl bg-yellow-500 px-4 py-2 text-sm font-semibold text-black hover:bg-yellow-400"
                       >
                         ✏️ Edit
                       </button>
 
                       <button
                         onClick={() => handleDelete(ev)}
-                        className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500"
+                        className="w-full sm:w-auto rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500"
                       >
                         🗑 Delete
                       </button>
@@ -506,16 +520,20 @@ export default function EventsPage() {
               </div>
 
               <div className="p-4">
-                <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <h3 className="text-xl font-extrabold">{viewEvent.title}</h3>
-                    <p className="mt-1 text-zinc-400">📍 {viewEvent.location}</p>
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-extrabold break-words">
+                      {viewEvent.title}
+                    </h3>
+                    <p className="mt-1 text-zinc-400 break-words">
+                      📍 {viewEvent.location}
+                    </p>
                     <div className="mt-2 inline-flex rounded-full bg-green-500/15 px-3 py-1 text-xs font-semibold text-green-200">
                       {String(viewEvent.category || "uncategorized").toUpperCase()}
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-zinc-800 bg-black/40 p-3 text-sm">
+                  <div className="w-full md:w-auto rounded-2xl border border-zinc-800 bg-black/40 p-3 text-sm">
                     <div className="text-zinc-400">Start</div>
                     <div className="font-semibold">
                       {formatPretty(viewEvent.start_date)}
@@ -529,7 +547,7 @@ export default function EventsPage() {
 
                 <div className="mt-4">
                   <div className="text-sm font-bold text-zinc-200">Description</div>
-                  <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-300">
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm text-zinc-300">
                     {viewEvent.description || "No description"}
                   </p>
                 </div>
@@ -615,7 +633,7 @@ export default function EventsPage() {
 function ModalShell({ title, onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3">
-      <div className="w-full max-w-md overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 shadow-2xl">
+      <div className="w-full max-w-md max-h-[90vh] overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-950 shadow-2xl">
         <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
           <div className="text-base font-extrabold">{title}</div>
           <button
@@ -625,7 +643,9 @@ function ModalShell({ title, onClose, children }) {
             ✕
           </button>
         </div>
-        <div className="px-4 py-4">{children}</div>
+        <div className="px-4 py-4 overflow-y-auto max-h-[calc(90vh-56px)]">
+          {children}
+        </div>
       </div>
     </div>
   );

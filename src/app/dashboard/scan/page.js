@@ -7,25 +7,37 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 const STORAGE_KEY = "WEB_SCAN_HISTORY";
 const SCAN_LOCK_MS = 3000;
 
-function money(n) {
-  return Number(n || 0).toFixed(2);
-}
-
 export default function ScanPage() {
-  const [scanning, setScanning] = useState(false);
+  const [events, setEvents] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [history, setHistory] = useState([]);
-  const [eventId, setEventId] = useState("");
-  const [eventTitle, setEventTitle] = useState("Ticket Scanner");
+  const [scanning, setScanning] = useState(false);
+  const [popup, setPopup] = useState(null); // SUCCESS / ERROR
 
   const scannerRef = useRef(null);
   const lastScanRef = useRef({ code: null, time: 0 });
 
-  /* ================= LOAD HISTORY ================= */
+  /* ================= LOAD EVENTS ================= */
 
   useEffect(() => {
+    loadEvents();
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) setHistory(JSON.parse(stored));
   }, []);
+
+  async function loadEvents() {
+    const res = await fetch(`${API_URL}/api/events/organizer/`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("access")}`,
+      },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      setEvents(data);
+      if (data.length > 0) setSelectedEvent(data[0]);
+    }
+  }
 
   function saveHistory(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -45,27 +57,25 @@ export default function ScanPage() {
       else pending++;
     });
 
-    return {
-      valid,
-      invalid,
-      pending,
-      total: history.length,
-    };
+    return { valid, invalid, pending, total: history.length };
   }, [history]);
 
-  /* ================= CLEAR ================= */
+  /* ================= SOUND ================= */
 
-  function clearHistory() {
-    if (!confirm("Clear scan history?")) return;
-    localStorage.removeItem(STORAGE_KEY);
-    setHistory([]);
+  function playSound(type) {
+    const audio = new Audio(
+      type === "success"
+        ? "/success.mp3"
+        : "/error.mp3"
+    );
+    audio.play();
   }
 
-  /* ================= START CAMERA ================= */
+  /* ================= START SCANNER ================= */
 
   async function startScanner() {
-    if (!eventId) {
-      alert("Please enter Event ID first.");
+    if (!selectedEvent) {
+      alert("Please select event first.");
       return;
     }
 
@@ -77,15 +87,14 @@ export default function ScanPage() {
     await html5QrCode.start(
       { facingMode: "environment" },
       { fps: 10, qrbox: 250 },
-      handleScan,
-      () => {}
+      handleScan
     );
   }
 
   async function stopScanner() {
     if (scannerRef.current) {
       await scannerRef.current.stop();
-      scannerRef.current.clear();
+      await scannerRef.current.clear();
     }
     setScanning(false);
   }
@@ -108,7 +117,6 @@ export default function ScanPage() {
       id: now.toString(),
       code: decodedText,
       time: new Date().toLocaleTimeString(),
-      event: eventTitle,
       status: "PENDING",
     };
 
@@ -124,14 +132,18 @@ export default function ScanPage() {
         },
         body: JSON.stringify({
           ticket_code: decodedText,
-          event_id: eventId,
+          event_id: selectedEvent.id,
         }),
       });
 
       if (!res.ok) {
         newHistory[0].status = "INVALID";
+        playSound("error");
+        showPopup("INVALID ❌", false);
       } else {
         newHistory[0].status = "VALID";
+        playSound("success");
+        showPopup("VALID ✅", true);
       }
 
       saveHistory([...newHistory]);
@@ -141,80 +153,113 @@ export default function ScanPage() {
     }
   }
 
+  function showPopup(text, success) {
+    setPopup({ text, success });
+    setTimeout(() => setPopup(null), 1500);
+  }
+
+  /* ================= CLEAR ================= */
+
+  function clearHistory() {
+    if (!confirm("Clear scan history?")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    setHistory([]);
+  }
+
   /* ================= UI ================= */
 
   return (
     <div className="min-h-screen bg-black text-white p-4">
       <div className="max-w-4xl mx-auto">
 
-        {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-extrabold">
-              {eventTitle}
-            </h1>
-            <p className="text-sm text-green-400">
-              ✅ {stats.valid} | ❌ {stats.invalid} | ⏳ {stats.pending} | 📊 {stats.total}
-            </p>
-          </div>
+        <h1 className="text-3xl font-extrabold">Ticket Scanner</h1>
 
-          <button
-            onClick={clearHistory}
-            className="bg-red-600 px-4 py-2 rounded-xl hover:bg-red-500"
+        <p className="mt-2 text-green-400 text-sm">
+          ✅ {stats.valid} | ❌ {stats.invalid} | ⏳ {stats.pending} | 📊 {stats.total}
+        </p>
+
+        {/* EVENT DROPDOWN */}
+        <div className="mt-6">
+          <select
+            value={selectedEvent?.id || ""}
+            onChange={(e) =>
+              setSelectedEvent(
+                events.find((ev) => ev.id === Number(e.target.value))
+              )
+            }
+            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3"
           >
-            Clear
-          </button>
+            {events.map((ev) => (
+              <option key={ev.id} value={ev.id}>
+                {ev.title}
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* EVENT INPUT */}
-        <div className="mt-6 grid md:grid-cols-3 gap-4">
-          <input
-            placeholder="Event ID"
-            value={eventId}
-            onChange={(e) => setEventId(e.target.value)}
-            className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3"
-          />
-          <input
-            placeholder="Event Title"
-            value={eventTitle}
-            onChange={(e) => setEventTitle(e.target.value)}
-            className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3"
-          />
-
+        {/* BUTTONS */}
+        <div className="mt-4 flex gap-4">
           {!scanning ? (
             <button
               onClick={startScanner}
-              className="bg-green-500 text-black font-bold rounded-xl"
+              className="flex-1 bg-green-500 text-black font-bold py-3 rounded-xl"
             >
               Start Scan
             </button>
           ) : (
             <button
               onClick={stopScanner}
-              className="bg-yellow-500 text-black font-bold rounded-xl"
+              className="flex-1 bg-yellow-500 text-black font-bold py-3 rounded-xl"
             >
-              Stop
+              Stop Scan
             </button>
           )}
+
+          <button
+            onClick={clearHistory}
+            className="bg-red-600 px-4 rounded-xl"
+          >
+            Clear
+          </button>
         </div>
 
         {/* CAMERA */}
-        <div className="mt-6 rounded-3xl overflow-hidden border border-zinc-800">
-          <div id="reader" className="w-full"></div>
+        <div className="mt-6 relative border border-green-500 rounded-3xl overflow-hidden">
+          <div id="reader" className="w-full" />
+
+          {/* Animated Frame */}
+          {scanning && (
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-10 border-4 border-green-500 rounded-xl animate-pulse"></div>
+            </div>
+          )}
         </div>
+
+        {/* POPUP */}
+        {popup && (
+          <div
+            className={`fixed inset-0 flex items-center justify-center z-50 ${
+              popup.success ? "bg-green-600/30" : "bg-red-600/30"
+            }`}
+          >
+            <div className="bg-black px-8 py-6 rounded-3xl text-2xl font-bold">
+              {popup.text}
+            </div>
+          </div>
+        )}
 
         {/* HISTORY */}
         <div className="mt-8 space-y-3">
           {history.map((item) => (
             <div
               key={item.id}
-              className="flex justify-between items-center bg-zinc-900 border border-zinc-800 rounded-xl p-3"
+              className="flex justify-between bg-zinc-900 border border-zinc-800 rounded-xl p-3"
             >
-              <div className="text-sm text-zinc-400">
+              <span className="text-zinc-400">
                 {item.code.slice(0, 8)}…
-              </div>
+              </span>
 
-              <div
+              <span
                 className={
                   item.status === "VALID"
                     ? "text-green-400 font-bold"
@@ -224,7 +269,7 @@ export default function ScanPage() {
                 }
               >
                 {item.status}
-              </div>
+              </span>
             </div>
           ))}
         </div>

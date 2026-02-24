@@ -23,6 +23,7 @@ export default function DashboardLayout({ children }) {
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
     { name: "Events", href: "/dashboard/events", icon: Calendar },
+    { name: "Tickets", href: "/dashboard/events/tickets", icon: Ticket },
     { name: "Orders", href: "/dashboard/orders", icon: ShoppingCart },
     { name: "Payments", href: "/dashboard/payments", icon: CreditCard },
     { name: "Refunds", href: "/dashboard/refunds", icon: RotateCcw },

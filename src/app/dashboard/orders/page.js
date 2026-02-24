@@ -247,12 +247,21 @@ export default function OrdersPage() {
                     <div className="flex justify-between">
                       <div className="font-bold">Order #{o.id}</div>
                       <div
-                        className={`border px-2 py-1 rounded-full text-xs font-bold ${statusColor(
-                          o.status
-                        )}`}
-                      >
-                        {o.status}
-                      </div>
+                         className={`inline-flex items-center justify-center min-w-[90px] px-4 py-2 text-sm font-semibold rounded-full capitalize
+                       ${
+                         o.status === "paid"
+                         ? "bg-green-500 text-black shadow-md shadow-green-500/20"
+                         : o.status === "pending"
+                         ? "bg-yellow-500/15 text-yellow-400 border border-yellow-500/40"
+                         : o.status === "refunded"
+                         ? "bg-red-500/15 text-red-400 border border-red-500/40"
+                         : o.status === "refund_requested"
+                         ? "bg-sky-500/15 text-sky-400 border border-sky-500/40"
+                         : "bg-zinc-500/10 text-zinc-400 border border-zinc-500/40"
+                       }`}
+                    >
+                       {o.status}
+                    </div>
                     </div>
 
                     <div className="mt-2 text-green-400 font-bold">

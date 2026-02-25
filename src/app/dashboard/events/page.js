@@ -68,6 +68,8 @@ const CATEGORIES = [
   "nightlife",
   "conference",
   "sports",
+  "liveband",
+  "culture",
   "other",
 ];
 

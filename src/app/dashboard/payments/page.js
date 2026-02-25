@@ -88,8 +88,12 @@ export default function PaymentsPage() {
   async function requestWithdrawal() {
     if (!selectedEvent) return;
 
+    if (totalWithdrawable <= 0) return;
+
     const confirmWithdraw = confirm(
-      `Request withdrawal for ${selectedEvent.title}?`
+      `Request withdrawal for ${selectedEvent.title}?\n\nAvailable: SSP ${money(
+        totalWithdrawable
+      )}`
     );
     if (!confirmWithdraw) return;
 
@@ -99,29 +103,53 @@ export default function PaymentsPage() {
     });
 
     if (res.ok) {
-      alert(`Withdrawal requested\nTotal: SSP ${money(data.total)}`);
+      alert(
+        `Withdrawal requested\nReference: ${data.reference}\nTotal: SSP ${money(
+          data.total
+        )}`
+      );
       fetchPayments(selectedEvent.id);
     } else {
       alert(data?.error || "Failed to request withdrawal.");
     }
   }
 
+  /* ================= FILTER WITHDRAWABLE ================= */
+
+  const withdrawablePayments = useMemo(
+    () =>
+      payments.filter(
+        (p) =>
+          p.payout_status === "unpaid" ||
+          p.payout_status === "pending"
+      ),
+    [payments]
+  );
+
   /* ================= SUMMARY ================= */
 
   const totalRevenue = useMemo(
-    () => payments.reduce((sum, p) => sum + Number(p.amount || 0), 0),
+    () =>
+      payments.reduce((sum, p) => sum + Number(p.amount || 0), 0),
     [payments]
   );
 
   const totalCommission = useMemo(
-    () => payments.reduce((sum, p) => sum + Number(p.commission || 0), 0),
+    () =>
+      payments.reduce(
+        (sum, p) => sum + Number(p.commission || 0),
+        0
+      ),
     [payments]
   );
 
-  const totalOrganizer = useMemo(
+  const totalWithdrawable = useMemo(
     () =>
-      payments.reduce((sum, p) => sum + Number(p.organizer_amount || 0), 0),
-    [payments]
+      withdrawablePayments.reduce(
+        (sum, p) => sum + Number(p.organizer_amount || 0),
+        0
+      ),
+    [withdrawablePayments]
   );
 
   const commissionPercent =
@@ -129,9 +157,7 @@ export default function PaymentsPage() {
       ? ((totalCommission / totalRevenue) * 100).toFixed(2)
       : 0;
 
-  const hasPending = payments.some(
-    (p) => p.payout_status !== "paid"
-  );
+  const canWithdraw = totalWithdrawable > 0;
 
   /* ================= CSV EXPORT ================= */
 
@@ -142,7 +168,7 @@ export default function PaymentsPage() {
       "Organizer",
       "Provider",
       "Customer",
-      "Status",
+      "Payout Status",
       "Date",
     ];
 
@@ -183,7 +209,7 @@ export default function PaymentsPage() {
               Organizer Payments
             </h1>
             <p className="text-sm text-zinc-400">
-              Stripe-style payout tracking dashboard.
+              Stripe-style payout dashboard.
             </p>
           </div>
 
@@ -197,7 +223,12 @@ export default function PaymentsPage() {
 
             <button
               onClick={requestWithdrawal}
-              className="bg-green-500 text-black font-bold px-5 py-3 rounded-xl hover:bg-green-400"
+              disabled={!canWithdraw}
+              className={`px-5 py-3 rounded-xl font-bold ${
+                canWithdraw
+                  ? "bg-green-500 text-black hover:bg-green-400"
+                  : "bg-zinc-700 text-zinc-400 cursor-not-allowed"
+              }`}
             >
               Request Withdrawal
             </button>
@@ -223,43 +254,22 @@ export default function PaymentsPage() {
           </select>
         </div>
 
-        {/* PENDING ALERT */}
-        {hasPending && (
-          <div className="mt-6 bg-yellow-500/10 border border-yellow-500/40 p-4 rounded-xl text-yellow-300">
-            ⚠ Some payouts are still pending.
-          </div>
-        )}
-
         {/* SUMMARY CARDS */}
         <div className="mt-6 grid md:grid-cols-4 gap-4">
-          <Stat label="Revenue" value={`SSP ${money(totalRevenue)}`} />
-          <Stat
-            label="Commission"
-            value={`SSP ${money(totalCommission)}`}
-            yellow
-          />
-          <Stat
-            label="Organizer Earnings"
-            value={`SSP ${money(totalOrganizer)}`}
-            green
-          />
-          <Stat
-            label="Commission %"
-            value={`${commissionPercent}%`}
-            blue
-          />
+          <Stat label="Total Revenue" value={`SSP ${money(totalRevenue)}`} />
+          <Stat label="Commission" value={`SSP ${money(totalCommission)}`} yellow />
+          <Stat label="Withdrawable" value={`SSP ${money(totalWithdrawable)}`} green />
+          <Stat label="Commission %" value={`${commissionPercent}%`} blue />
         </div>
 
         {/* LIST */}
         <div className="mt-8">
-
           {loading ? (
             <div className="text-center text-zinc-500">
               Loading payments...
             </div>
           ) : (
-            <div className="hidden md:block border border-zinc-800 rounded-2xl overflow-hidden">
-
+            <div className="border border-zinc-800 rounded-2xl overflow-hidden">
               {payments.map((p) => (
                 <div
                   key={p.id}
@@ -269,33 +279,31 @@ export default function PaymentsPage() {
                   <div className="font-bold">
                     SSP {money(p.amount)}
                   </div>
-
                   <div>SSP {money(p.commission)}</div>
                   <div>SSP {money(p.organizer_amount)}</div>
                   <div>{p.provider?.toUpperCase()}</div>
                   <div>{p.customer_email}</div>
                   <div>{formatDate(p.created_at)}</div>
-
                   <div className="flex justify-end">
                     <span
-                      className={`px-4 py-2 rounded-full text-sm font-semibold capitalize animate-pulse
-                        ${
-                          p.payout_status === "paid"
-                            ? "bg-green-500 text-black"
-                            : "bg-yellow-500 text-black"
-                        }`}
+                      className={`px-4 py-2 rounded-full text-sm font-semibold capitalize ${
+                        p.payout_status === "paid"
+                          ? "bg-green-500 text-black"
+                          : p.payout_status === "pending"
+                          ? "bg-yellow-500 text-black"
+                          : "bg-zinc-700 text-white"
+                      }`}
                     >
-                      {p.payout_status || "unpaid"}
+                      {p.payout_status}
                     </span>
                   </div>
                 </div>
               ))}
-
             </div>
           )}
         </div>
 
-        {/* PAYMENT MODAL */}
+        {/* MODAL */}
         {selectedPayment && (
           <PaymentModal
             payment={selectedPayment}
@@ -307,7 +315,7 @@ export default function PaymentsPage() {
   );
 }
 
-/* ================= STAT CARD ================= */
+/* ================= COMPONENTS ================= */
 
 function Stat({ label, value, green, yellow, blue }) {
   const color = green
@@ -328,8 +336,6 @@ function Stat({ label, value, green, yellow, blue }) {
   );
 }
 
-/* ================= PAYMENT MODAL ================= */
-
 function PaymentModal({ payment, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
@@ -344,7 +350,7 @@ function PaymentModal({ payment, onClose }) {
         <Detail label="Provider" value={payment.provider} />
         <Detail label="Customer" value={payment.customer_email} />
         <Detail label="Ticket" value={payment.ticket_type_name} />
-        <Detail label="Status" value={payment.payout_status} />
+        <Detail label="Payout Status" value={payment.payout_status} />
         <Detail label="Date" value={formatDate(payment.created_at)} />
 
         <button

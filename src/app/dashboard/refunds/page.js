@@ -21,6 +21,7 @@ async function apiFetch(path, options = {}) {
 
   const text = await res.text();
   let data = null;
+
   try {
     data = text ? JSON.parse(text) : null;
   } catch {}
@@ -35,17 +36,18 @@ function money(n) {
 }
 
 function formatDate(date) {
-  if (!date) return "Unknown";
+  if (!date) return "—";
   return new Date(date).toLocaleString();
 }
 
 function badgeClass(status) {
   const s = (status || "").toLowerCase();
 
-  if (s.includes("approved") || s === "approved") return "bg-yellow-500 text-black";
-  if (s.includes("refunded") || s === "refunded") return "bg-green-500 text-black";
-  if (s.includes("rejected") || s === "rejected") return "bg-red-500 text-black";
-  if (s.includes("pending") || s === "pending") return "bg-zinc-700 text-white";
+  if (s === "requested") return "bg-yellow-500 text-black";
+  if (s === "approved") return "bg-sky-500 text-black";
+  if (s === "processing") return "bg-orange-500 text-black";
+  if (s === "paid") return "bg-green-500 text-black";
+  if (s === "rejected") return "bg-red-500 text-black";
 
   return "bg-zinc-700 text-white";
 }
@@ -67,7 +69,7 @@ export default function RefundsPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedEvent) fetchRefunds(selectedEvent.id);
+    if (selectedEvent?.id) fetchRefunds(selectedEvent.id);
   }, [selectedEvent]);
 
   async function fetchEvents() {
@@ -77,8 +79,12 @@ export default function RefundsPage() {
     const { res, data } = await apiFetch("/api/events/organizer/");
 
     if (res.ok) {
-      setEvents(data || []);
-      if ((data || []).length > 0) setSelectedEvent(data[0]);
+      const list = Array.isArray(data) ? data : [];
+      setEvents(list);
+
+      if (list.length > 0) {
+        setSelectedEvent(list[0]);
+      }
     } else {
       setError("Failed to load events.");
     }
@@ -90,11 +96,15 @@ export default function RefundsPage() {
     setLoading(true);
     setError("");
 
-    // ✅ If your backend route differs, change only this path:
-    const { res, data } = await apiFetch(`/api/refunds/organizer/?event=${eventId}`);
+    const { res, data } = await apiFetch(
+      `/api/refunds/organizer/?event=${eventId}`
+    );
 
-    if (res.ok) setRefunds(data || []);
-    else setError(data?.error || "Failed to load refunds.");
+    if (res.ok) {
+      setRefunds(Array.isArray(data) ? data : []);
+    } else {
+      setError(data?.error || "Failed to load refunds.");
+    }
 
     setLoading(false);
   }
@@ -104,46 +114,76 @@ export default function RefundsPage() {
   const totals = useMemo(() => {
     const totalCount = refunds.length;
 
-    const pending = refunds.filter((r) => (r.status || "").toLowerCase() === "pending").length;
-    const approved = refunds.filter((r) => (r.status || "").toLowerCase() === "approved").length;
-    const refunded = refunds.filter((r) => (r.status || "").toLowerCase() === "refunded").length;
-    const rejected = refunds.filter((r) => (r.status || "").toLowerCase() === "rejected").length;
+    const requested = refunds.filter(
+      (r) => r.status?.toLowerCase() === "requested"
+    ).length;
 
-    const totalAmount = refunds.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+    const approved = refunds.filter(
+      (r) => r.status?.toLowerCase() === "approved"
+    ).length;
 
-    return { totalCount, pending, approved, refunded, rejected, totalAmount };
+    const processing = refunds.filter(
+      (r) => r.status?.toLowerCase() === "processing"
+    ).length;
+
+    const paid = refunds.filter(
+      (r) => r.status?.toLowerCase() === "paid"
+    ).length;
+
+    const rejected = refunds.filter(
+      (r) => r.status?.toLowerCase() === "rejected"
+    ).length;
+
+    const totalAmount = refunds.reduce(
+      (sum, r) => sum + Number(r.amount || 0),
+      0
+    );
+
+    return {
+      totalCount,
+      requested,
+      approved,
+      processing,
+      paid,
+      rejected,
+      totalAmount,
+    };
   }, [refunds]);
 
   /* ================= CSV EXPORT ================= */
 
   function exportCSV() {
+    if (!refunds.length) return;
+
     const headers = [
-      "Refund ID",
+      "Reference",
       "Order ID",
       "Amount",
       "Status",
-      "Reason",
       "Customer",
       "Event",
       "Requested At",
       "Approved At",
-      "Refunded At",
+      "Paid At",
     ];
 
     const rows = refunds.map((r) => [
-      r.id,
+      r.reference,
       r.order_id,
       r.amount,
       r.status,
-      (r.reason || "").replaceAll(",", " "),
       r.customer_email,
       r.event_title,
-      formatDate(r.created_at || r.requested_at),
+      formatDate(r.requested_at),
       formatDate(r.approved_at),
-      formatDate(r.refunded_at),
+      formatDate(r.paid_at),
     ]);
 
-    const csv = headers.join(",") + "\n" + rows.map((row) => row.join(",")).join("\n");
+    const csv =
+      headers.join(",") +
+      "\n" +
+      rows.map((row) => row.join(",")).join("\n");
+
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
 
@@ -160,22 +200,21 @@ export default function RefundsPage() {
       <div className="mx-auto max-w-7xl px-4 py-8">
 
         {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:justify-between gap-4">
+        <div className="flex justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-extrabold">Refunds</h1>
             <p className="text-sm text-zinc-400">
-              Refund requests are accepted up to <b>24 hours</b> before the event, and processing may take <b>3–7 days</b> in MoMo.
+              Refund requests are accepted up to <b>24 hours</b> before event.
+              MoMo processing may take <b>3–7 days</b>.
             </p>
           </div>
 
-          <div className="flex gap-3">
-            <button
-              onClick={exportCSV}
-              className="bg-white/10 px-5 py-3 rounded-xl hover:bg-white/20"
-            >
-              Export CSV
-            </button>
-          </div>
+          <button
+            onClick={exportCSV}
+            className="bg-white/10 px-5 py-3 rounded-xl hover:bg-white/20"
+          >
+            Export CSV
+          </button>
         </div>
 
         {/* EVENT SELECT */}
@@ -183,9 +222,11 @@ export default function RefundsPage() {
           <select
             value={selectedEvent?.id || ""}
             onChange={(e) =>
-              setSelectedEvent(events.find((ev) => ev.id === Number(e.target.value)))
+              setSelectedEvent(
+                events.find((ev) => ev.id === Number(e.target.value))
+              )
             }
-            className="w-full md:w-1/3 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3"
+            className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3"
           >
             {events.map((ev) => (
               <option key={ev.id} value={ev.id}>
@@ -195,29 +236,32 @@ export default function RefundsPage() {
           </select>
         </div>
 
-        {/* SUMMARY CARDS */}
-        <div className="mt-6 grid md:grid-cols-5 gap-4">
-          <Stat label="Total Refunds" value={`${totals.totalCount}`} />
-          <Stat label="Pending" value={`${totals.pending}`} yellow />
-          <Stat label="Approved" value={`${totals.approved}`} blue />
-          <Stat label="Refunded" value={`${totals.refunded}`} green />
-          <Stat label="Total Amount" value={`SSP ${money(totals.totalAmount)}`} />
+        {/* SUMMARY */}
+        <div className="mt-6 grid md:grid-cols-6 gap-4">
+          <Stat label="Total" value={totals.totalCount} />
+          <Stat label="Requested" value={totals.requested} yellow />
+          <Stat label="Approved" value={totals.approved} blue />
+          <Stat label="Processing" value={totals.processing} />
+          <Stat label="Paid" value={totals.paid} green />
+          <Stat label="Amount" value={`SSP ${money(totals.totalAmount)}`} />
         </div>
 
         {/* LIST */}
         <div className="mt-8">
           {error && (
-            <div className="mb-4 bg-red-500/10 border border-red-500/40 p-4 rounded-xl text-red-300">
+            <div className="bg-red-500/10 border border-red-500/40 p-4 rounded-xl text-red-300">
               {error}
             </div>
           )}
 
           {loading ? (
-            <div className="text-center text-zinc-500">Loading refunds...</div>
+            <div className="text-zinc-500 text-center">Loading...</div>
           ) : (
             <div className="border border-zinc-800 rounded-2xl overflow-hidden">
               {refunds.length === 0 ? (
-                <div className="p-6 text-zinc-500">No refunds for this event yet.</div>
+                <div className="p-6 text-zinc-500">
+                  No refunds for this event yet.
+                </div>
               ) : (
                 refunds.map((r) => (
                   <div
@@ -225,15 +269,24 @@ export default function RefundsPage() {
                     onClick={() => setSelectedRefund(r)}
                     className="grid grid-cols-6 items-center px-6 py-4 border-b border-zinc-800 hover:bg-white/5 cursor-pointer"
                   >
-                    <div className="font-bold">SSP {money(r.amount)}</div>
-                    <div className="text-sm text-zinc-300">Order #{r.order_id}</div>
+                    <div className="font-bold">
+                      SSP {money(r.amount)}
+                    </div>
+                    <div>Order #{r.order_id}</div>
                     <div className="text-sm">{r.customer_email}</div>
-                    <div className="text-sm">{formatDate(r.created_at || r.requested_at)}</div>
-                    <div className="text-sm text-zinc-400 truncate">{r.reason || "—"}</div>
-
+                    <div className="text-sm">
+                      {formatDate(r.requested_at)}
+                    </div>
+                    <div className="truncate text-sm">
+                      {r.reason || "—"}
+                    </div>
                     <div className="flex justify-end">
-                      <span className={`px-4 py-2 rounded-full text-sm font-semibold capitalize ${badgeClass(r.status)}`}>
-                        {r.status || "pending"}
+                      <span
+                        className={`px-4 py-2 rounded-full text-sm font-semibold capitalize ${badgeClass(
+                          r.status
+                        )}`}
+                      >
+                        {r.status}
                       </span>
                     </div>
                   </div>
@@ -243,9 +296,11 @@ export default function RefundsPage() {
           )}
         </div>
 
-        {/* MODAL */}
         {selectedRefund && (
-          <RefundModal refund={selectedRefund} onClose={() => setSelectedRefund(null)} />
+          <RefundModal
+            refund={selectedRefund}
+            onClose={() => setSelectedRefund(null)}
+          />
         )}
       </div>
     </div>
@@ -266,7 +321,9 @@ function Stat({ label, value, green, yellow, blue }) {
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
       <div className="text-xs text-zinc-400">{label}</div>
-      <div className={`mt-2 text-2xl font-extrabold ${color}`}>{value}</div>
+      <div className={`mt-2 text-2xl font-extrabold ${color}`}>
+        {value}
+      </div>
     </div>
   );
 }
@@ -277,19 +334,12 @@ function RefundModal({ refund, onClose }) {
       <div className="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-md p-6">
         <h2 className="text-xl font-extrabold mb-4">Refund Details</h2>
 
+        <Detail label="Reference" value={refund.reference} />
         <Detail label="Amount" value={`SSP ${money(refund.amount)}`} />
-        <Detail label="Order" value={`#${refund.order_id}`} />
-        <Detail label="Customer" value={refund.customer_email} />
-        <Detail label="Event" value={refund.event_title} />
         <Detail label="Status" value={refund.status} />
-        <Detail label="Reason" value={refund.reason || "—"} />
-        <Detail label="Requested At" value={formatDate(refund.created_at || refund.requested_at)} />
+        <Detail label="Requested At" value={formatDate(refund.requested_at)} />
         <Detail label="Approved At" value={formatDate(refund.approved_at)} />
-        <Detail label="Refunded At" value={formatDate(refund.refunded_at)} />
-
-        <div className="mt-4 text-xs text-zinc-400">
-          MoMo refunds may take <b>3–7 days</b> depending on provider processing.
-        </div>
+        <Detail label="Paid At" value={formatDate(refund.paid_at)} />
 
         <button
           onClick={onClose}
@@ -304,9 +354,11 @@ function RefundModal({ refund, onClose }) {
 
 function Detail({ label, value }) {
   return (
-    <div className="flex justify-between text-sm mb-2 gap-4">
+    <div className="flex justify-between text-sm mb-2">
       <div className="text-zinc-400">{label}</div>
-      <div className="font-bold text-right break-words">{value}</div>
+      <div className="font-bold text-right break-words">
+        {value || "—"}
+      </div>
     </div>
   );
 }

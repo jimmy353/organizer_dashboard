@@ -85,35 +85,6 @@ export default function PaymentsPage() {
     setLoading(false);
   }
 
-  async function requestWithdrawal() {
-    if (!selectedEvent) return;
-
-    if (totalWithdrawable <= 0) return;
-
-    const confirmWithdraw = confirm(
-      `Request withdrawal for ${selectedEvent.title}?\n\nAvailable: SSP ${money(
-        totalWithdrawable
-      )}`
-    );
-    if (!confirmWithdraw) return;
-
-    const { res, data } = await apiFetch("/api/payouts/request/", {
-      method: "POST",
-      body: JSON.stringify({ event_id: selectedEvent.id }),
-    });
-
-    if (res.ok) {
-      alert(
-        `Withdrawal requested\nReference: ${data.reference}\nTotal: SSP ${money(
-          data.total
-        )}`
-      );
-      fetchPayments(selectedEvent.id);
-    } else {
-      alert(data?.error || "Failed to request withdrawal.");
-    }
-  }
-
   /* ================= FILTER WITHDRAWABLE ================= */
 
   const withdrawablePayments = useMemo(
@@ -158,6 +129,58 @@ export default function PaymentsPage() {
       : 0;
 
   const canWithdraw = totalWithdrawable > 0;
+
+  /* ================= EVENT STATUS ================= */
+
+  const now = new Date();
+  let eventStatus = "unknown";
+  let eventEnded = false;
+
+  if (selectedEvent?.start_date && selectedEvent?.end_date) {
+    const start = new Date(selectedEvent.start_date);
+    const end = new Date(selectedEvent.end_date);
+
+    if (now < start) {
+      eventStatus = "upcoming";
+    } else if (now >= start && now <= end) {
+      eventStatus = "live";
+    } else {
+      eventStatus = "ended";
+      eventEnded = true;
+    }
+  }
+
+  const withdrawalAllowed = canWithdraw && eventEnded;
+
+  /* ================= REQUEST WITHDRAWAL ================= */
+
+  async function requestWithdrawal() {
+    if (!selectedEvent) return;
+    if (!withdrawalAllowed) return;
+
+    const confirmWithdraw = confirm(
+      `Request withdrawal for ${selectedEvent.title}?\n\nAvailable: SSP ${money(
+        totalWithdrawable
+      )}`
+    );
+    if (!confirmWithdraw) return;
+
+    const { res, data } = await apiFetch("/api/payouts/request/", {
+      method: "POST",
+      body: JSON.stringify({ event_id: selectedEvent.id }),
+    });
+
+    if (res.ok) {
+      alert(
+        `Withdrawal requested\nReference: ${data.reference}\nTotal: SSP ${money(
+          data.total
+        )}`
+      );
+      fetchPayments(selectedEvent.id);
+    } else {
+      alert(data?.error || "Failed to request withdrawal.");
+    }
+  }
 
   /* ================= CSV EXPORT ================= */
 
@@ -223,14 +246,16 @@ export default function PaymentsPage() {
 
             <button
               onClick={requestWithdrawal}
-              disabled={!canWithdraw}
+              disabled={!withdrawalAllowed}
               className={`px-5 py-3 rounded-xl font-bold ${
-                canWithdraw
+                withdrawalAllowed
                   ? "bg-green-500 text-black hover:bg-green-400"
                   : "bg-zinc-700 text-zinc-400 cursor-not-allowed"
               }`}
             >
-              Request Withdrawal
+              {eventEnded
+                ? "Request Withdrawal"
+                : "Available After Event Ends"}
             </button>
           </div>
         </div>
@@ -252,6 +277,31 @@ export default function PaymentsPage() {
               </option>
             ))}
           </select>
+
+          {/* EVENT STATUS BADGE */}
+          {selectedEvent && (
+            <div className="mt-3">
+              <span
+                className={`px-4 py-2 rounded-full text-sm font-semibold capitalize ${
+                  eventStatus === "upcoming"
+                    ? "bg-yellow-500 text-black"
+                    : eventStatus === "live"
+                    ? "bg-sky-500 text-black"
+                    : eventStatus === "ended"
+                    ? "bg-green-500 text-black"
+                    : "bg-zinc-700 text-white"
+                }`}
+              >
+                {eventStatus === "upcoming"
+                  ? "Upcoming Event"
+                  : eventStatus === "live"
+                  ? "Live Now"
+                  : eventStatus === "ended"
+                  ? "Event Ended"
+                  : "Unknown"}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* SUMMARY CARDS */}
@@ -303,7 +353,6 @@ export default function PaymentsPage() {
           )}
         </div>
 
-        {/* MODAL */}
         {selectedPayment && (
           <PaymentModal
             payment={selectedPayment}

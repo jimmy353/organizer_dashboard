@@ -324,7 +324,7 @@ export default function PaymentsPage() {
                 <div
                   key={p.id}
                   onClick={() => setSelectedPayment(p)}
-                  className="grid grid-cols-7 items-center px-6 py-4 border-b border-zinc-800 hover:bg-white/5 cursor-pointer"
+                  className="grid grid-cols-2 md:grid-cols-7 items-center px-6 py-4 border-b border-zinc-800 hover:bg-white/5 cursor-pointer"
                 >
                   <div className="font-bold">
                     SSP {money(p.amount)}

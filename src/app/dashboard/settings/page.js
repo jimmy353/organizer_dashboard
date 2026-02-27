@@ -18,7 +18,7 @@ export default function SettingsPage() {
     const token = localStorage.getItem("access");
 
     const res = await fetch(
-      `${API_URL}/api/accounts/organizer/settings/`,
+      `${API_URL}/api/auth/organizer/settings/`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

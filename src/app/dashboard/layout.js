@@ -15,6 +15,7 @@ import {
   LogOut,
   Menu,
   X,
+  Settings,
 } from "lucide-react";
 
 export default function DashboardLayout({ children }) {
@@ -77,21 +78,35 @@ export default function DashboardLayout({ children }) {
       </div>
 
       {/* Bottom Section */}
-      <div className="space-y-6">
+            <div className="space-y-4">
+
+        <Link
+            href="/dashboard/settings"
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300
+      mm${
+            pathname === "/dashboard/settings"
+          ? "bg-gradient-to-r from-green-400 to-emerald-500 text-black shadow-lg"
+          : "hover:bg-green-500/10 hover:text-green-400"
+         }`}
+  >
+         <Settings size={18} />
+        <span className="font-medium">Settings</span>
+        </Link>
+
         <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-sm text-green-300">
-          Organizer Panel v1.0
-        </div>
+           Organizer Panel v1.0
+      </div>
 
         <button
-          onClick={logout}
-          className="flex items-center gap-3 px-4 py-3 w-full rounded-xl hover:bg-red-500/20 text-red-400 transition"
+         onClick={logout}
+         className="flex items-center gap-3 px-4 py-3 w-full rounded-xl hover:bg-red-500/20 text-red-400 transition"
         >
-          <LogOut size={18} />
-          Logout
+        <LogOut size={18} />
+         Logout
         </button>
-      </div>
+     </div>
     </div>
-  );
+    );
 
   return (
     <div className="min-h-screen bg-[#0b1120] text-white">

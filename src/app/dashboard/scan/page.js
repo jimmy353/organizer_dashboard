@@ -71,6 +71,18 @@ export default function ScanPage() {
     audio.play();
   }
 
+  /* ================= VIBRATION ================= */
+
+  function vibrate(type) {
+    if (!navigator.vibrate) return;
+
+    if (type === "success") {
+      navigator.vibrate(150);
+    } else {
+      navigator.vibrate([100, 50, 100]);
+    }
+  }
+
   /* ================= START SCANNER ================= */
 
   async function startScanner() {
@@ -139,10 +151,12 @@ export default function ScanPage() {
       if (!res.ok) {
         newHistory[0].status = "INVALID";
         playSound("error");
+        vibrate("error");
         showPopup("INVALID ❌", false);
       } else {
         newHistory[0].status = "VALID";
         playSound("success");
+        vibrate("success");
         showPopup("VALID ✅", true);
       }
 
@@ -227,7 +241,6 @@ export default function ScanPage() {
         <div className="mt-6 relative border border-green-500 rounded-3xl overflow-hidden">
           <div id="reader" className="w-full" />
 
-          {/* Animated Frame */}
           {scanning && (
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute inset-10 border-4 border-green-500 rounded-xl animate-pulse"></div>

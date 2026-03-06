@@ -90,7 +90,9 @@ export default function PaymentsPage() {
   const withdrawablePayments = useMemo(
     () =>
       payments.filter(
-        (p) => p.payout_status === "unpaid" || p.payout_status === "pending"
+        (p) =>
+          p.payout_status === "unpaid" ||
+          p.payout_status === "pending"
       ),
     [payments]
   );
@@ -98,12 +100,17 @@ export default function PaymentsPage() {
   /* ================= SUMMARY ================= */
 
   const totalRevenue = useMemo(
-    () => payments.reduce((sum, p) => sum + Number(p.amount || 0), 0),
+    () =>
+      payments.reduce((sum, p) => sum + Number(p.amount || 0), 0),
     [payments]
   );
 
   const totalCommission = useMemo(
-    () => payments.reduce((sum, p) => sum + Number(p.commission || 0), 0),
+    () =>
+      payments.reduce(
+        (sum, p) => sum + Number(p.commission || 0),
+        0
+      ),
     [payments]
   );
 
@@ -133,9 +140,11 @@ export default function PaymentsPage() {
     const start = new Date(selectedEvent.start_date);
     const end = new Date(selectedEvent.end_date);
 
-    if (now < start) eventStatus = "upcoming";
-    else if (now >= start && now <= end) eventStatus = "live";
-    else {
+    if (now < start) {
+      eventStatus = "upcoming";
+    } else if (now >= start && now <= end) {
+      eventStatus = "live";
+    } else {
       eventStatus = "ended";
       eventEnded = true;
     }
@@ -154,7 +163,6 @@ export default function PaymentsPage() {
         totalWithdrawable
       )}`
     );
-
     if (!confirmWithdraw) return;
 
     const { res, data } = await apiFetch("/api/payouts/request/", {
@@ -215,10 +223,9 @@ export default function PaymentsPage() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <div className="mx-auto max-w-3xl px-4 py-8">
+      <div className="mx-auto max-w-7xl px-4 py-8">
 
         {/* HEADER */}
-
         <div className="flex flex-col md:flex-row md:justify-between gap-4">
 
           <h1 className="text-3xl font-extrabold">
@@ -226,7 +233,6 @@ export default function PaymentsPage() {
           </h1>
 
           <div className="flex gap-3">
-
             <button
               onClick={exportCSV}
               className="bg-white/10 px-5 py-3 rounded-xl hover:bg-white/20"
@@ -247,14 +253,11 @@ export default function PaymentsPage() {
                 ? "Request Withdrawal"
                 : "Available After Event Ends"}
             </button>
-
           </div>
         </div>
 
         {/* EVENT SELECT */}
-
         <div className="mt-6">
-
           <select
             value={selectedEvent?.id || ""}
             onChange={(e) =>
@@ -262,7 +265,7 @@ export default function PaymentsPage() {
                 events.find((ev) => ev.id === Number(e.target.value))
               )
             }
-            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3"
+            className="w-full md:w-1/3 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3"
           >
             {events.map((ev) => (
               <option key={ev.id} value={ev.id}>
@@ -270,36 +273,17 @@ export default function PaymentsPage() {
               </option>
             ))}
           </select>
-
         </div>
 
-        {/* SUMMARY */}
-
-        <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-
+        {/* SUMMARY CARDS */}
+        <div className="mt-6 grid md:grid-cols-4 gap-4">
           <Stat label="Total Revenue" value={`SSP ${money(totalRevenue)}`} />
-
-          <Stat
-            label="Commission"
-            value={`SSP ${money(totalCommission)}`}
-            yellow
-          />
-
-          <Stat
-            label="Withdrawable"
-            value={`SSP ${money(totalWithdrawable)}`}
-            green
-          />
-
-          <Stat
-            label="Commission %"
-            value={`${commissionPercent}%`}
-            blue
-          />
-
+          <Stat label="Commission" value={`SSP ${money(totalCommission)}`} yellow />
+          <Stat label="Withdrawable" value={`SSP ${money(totalWithdrawable)}`} green />
+          <Stat label="Commission %" value={`${commissionPercent}%`} blue />
         </div>
 
-        {/* PAYMENTS */}
+        {/* PAYMENTS LIST */}
 
         <div className="mt-8 space-y-4">
 
@@ -362,7 +346,6 @@ export default function PaymentsPage() {
             onClose={() => setSelectedPayment(null)}
           />
         )}
-
       </div>
     </div>
   );
@@ -371,7 +354,6 @@ export default function PaymentsPage() {
 /* ================= COMPONENTS ================= */
 
 function Stat({ label, value, green, yellow, blue }) {
-
   const color = green
     ? "text-green-400"
     : yellow
@@ -422,7 +404,7 @@ function PaymentModal({ payment, onClose }) {
 
 function Detail({ label, value }) {
   return (
-    <div className="flex justify-between text-sm">
+    <div className="flex justify-between text-sm mb-2">
       <div className="text-zinc-400">{label}</div>
       <div className="font-bold">{value}</div>
     </div>

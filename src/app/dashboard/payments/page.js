@@ -231,9 +231,6 @@ export default function PaymentsPage() {
             <h1 className="text-3xl font-extrabold">
               Organizer Payments
             </h1>
-            <p className="text-sm text-zinc-400">
-              Stripe-style payout dashboard.
-            </p>
           </div>
 
           <div className="flex gap-3">
